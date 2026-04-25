@@ -887,6 +887,6 @@ function showToast(msg, type='ok') {
   setTimeout(()=>t.classList.remove('show'),3000);
 }
 
-</script>
+if("serviceWorker" in navigator){navigator.serviceWorker.register("/psw-sw.js").catch(()=>{});}\n</script>
 </body>
 </html>
