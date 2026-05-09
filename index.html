@@ -521,6 +521,8 @@ a{color:inherit;text-decoration:none;}
 
 <script>
 const API = 'https://proximity-agent-production.up.railway.app';
+const OPERATOR_ID = new URLSearchParams(window.location.search).get('op') || localStorage.getItem('psw_operator_id') || 'proximity-care';
+if(new URLSearchParams(window.location.search).get('op')) localStorage.setItem('psw_operator_id', OPERATOR_ID);
 let pswName = '';
 let pswPin = '';
 let pswEmail = '';
@@ -683,7 +685,7 @@ async function submitVisit() {
 
   const nameParts = client.trim().split(/\s+/);
   const payload = {
-    operator_id: 'proximity-care',
+    operator_id: OPERATOR_ID,
     psw_name: pswName,
     psw_email: pswEmail || '',
     client_name: client,
@@ -791,7 +793,7 @@ async function loadClients() {
 async function loadSchedule() {
   const el = document.getElementById('schedule-list');
   try {
-    const res = await fetch(`${API}/hq/visits?operator_id=proximity-care`);
+    const res = await fetch(`${API}/hq/visits?operator_id=${OPERATOR_ID}`);
     const d = await res.json();
     const allVisits = (d.visits || []).filter(v => v.psw_name && v.psw_name.trim().toLowerCase() === pswName.trim().toLowerCase());
     allVisits.sort((a,b) => (b.visit_date||'').localeCompare(a.visit_date||''));
