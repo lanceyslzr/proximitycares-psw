@@ -586,7 +586,17 @@ a{color:inherit;text-decoration:none;}
 
     <div style="margin-bottom:12px;">
       <label class="form-label">Observations or follow-up needed</label>
-      <textarea class="form-textarea" id="co-obs" placeholder="Anything to flag from today's visit..."></textarea>
+      <textarea class="form-textarea" id="co-obs" placeholder="Anything to flag from today's visit..." oninput="clearProgressNote()"></textarea>
+    </div>
+
+    <!-- AI PROGRESS NOTE -->
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label class="form-label" style="margin:0;">Progress Note</label>
+        <button onclick="generateProgressNote()" id="gen-note-btn" style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;background:rgba(61,138,122,.1);border:1px solid rgba(61,138,122,.3);color:var(--teal);padding:5px 10px;border-radius:4px;cursor:pointer;min-height:32px;">✦ Generate with AI</button>
+      </div>
+      <textarea class="form-textarea" id="co-progress-note" placeholder="AI will generate a structured progress note from your observations above. You can edit it before submitting." style="min-height:100px;font-size:13px;line-height:1.6;"></textarea>
+      <div id="note-status" style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;display:none;"></div>
     </div>
 
     <div style="margin-bottom:20px;">
@@ -837,18 +847,15 @@ async function doCheckIn() {
   const btn = document.getElementById('signin-btn');
   btn.textContent = 'Signing in...'; btn.disabled = true;
 
-  // Capture GPS before checkin
+  // Capture GPS
   let latitude = null, longitude = null;
   try {
     const pos = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, maximumAge: 0 });
     });
-    latitude  = pos.coords.latitude;
-    longitude = pos.coords.longitude;
+    latitude = pos.coords.latitude; longitude = pos.coords.longitude;
     btn.textContent = 'Location captured...';
-  } catch(gpsErr) {
-    // GPS denied or unavailable — continue without it
-  }
+  } catch(e) {}
 
   try {
     const res = await fetch(`${API}/visit/checkin`, {
@@ -916,7 +923,8 @@ async function doCheckOut() {
         client_mood: selectedMood,
         incident_reported: incident.length > 0,
         incident_notes: incident || null,
-        observations: observations || null
+        observations: observations || null,
+        progress_note: document.getElementById('co-progress-note')?.value.trim() || null
       })
     });
     const d = await res.json();
@@ -1218,6 +1226,74 @@ window.addEventListener('popstate', function() {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/psw-sw.js').catch(()=>{});
 }
+
+// ── AI PROGRESS NOTES ──
+async function generateProgressNote() {
+  const obs     = document.getElementById('co-obs')?.value.trim() || '';
+  const supplies= document.getElementById('cl-supplies')?.value.trim() || '';
+  const tasks   = Array.from(document.querySelectorAll('#sect-checklist .cl-item.done'))
+                    .map(el => el.querySelector('.cl-label')?.textContent || '').filter(Boolean);
+  const mood    = selectedMood || 'not recorded';
+  const client  = activeVisit?.client_name || 'the client';
+
+  if (!obs && !tasks.length) {
+    showToast('Add observations or complete checklist items first', 'err');
+    return;
+  }
+
+  const btn = document.getElementById('gen-note-btn');
+  const status = document.getElementById('note-status');
+  btn.textContent = 'Generating...'; btn.disabled = true;
+  if (status) { status.textContent = 'Writing progress note...'; status.style.display = 'block'; }
+
+  try {
+    const prompt = [
+      tasks.length ? `Tasks completed: ${tasks.join(', ')}.` : '',
+      obs          ? `PSW observations: ${obs}.`             : '',
+      supplies     ? `Supply needs: ${supplies}.`            : '',
+      `Client mood: ${mood}.`,
+      `Client: ${client}.`
+    ].filter(Boolean).join(' ');
+
+    const res = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        operator_id: 'proximity-care',
+        system_override: `You write structured clinical progress notes for a home care agency. 
+Write a single professional progress note paragraph (3-5 sentences) based on the PSW input.
+Use plain prose only — no markdown, no bullet points, no asterisks, no headers.
+Start with what was done, include client condition and mood, note any concerns.
+Be factual, clinical, and concise. Write in third person (e.g. "Client was..." or "PSW assisted with...").`,
+        messages: [{ role: 'user', content: `Write a progress note: ${prompt}` }]
+      })
+    });
+    const d = await res.json();
+    const note = (d.response || '').replace(/[*_#`]/g, '').trim();
+    if (!note) throw new Error('No response from AI');
+
+    const ta = document.getElementById('co-progress-note');
+    if (ta) { ta.value = note; ta.style.borderColor = 'rgba(61,138,122,.5)'; }
+    btn.textContent = '✓ Generated — edit if needed';
+    if (status) { status.textContent = 'AI-generated · review and edit before submitting'; status.style.display = 'block'; }
+  } catch(e) {
+    showToast('Could not generate note — write it manually', 'err');
+    btn.textContent = '✦ Generate with AI';
+  }
+  btn.disabled = false;
+}
+
+function clearProgressNote() {
+  const btn = document.getElementById('gen-note-btn');
+  if (btn && btn.textContent.includes('Generated')) {
+    btn.textContent = '✦ Generate with AI';
+    const status = document.getElementById('note-status');
+    if (status) status.style.display = 'none';
+    const ta = document.getElementById('co-progress-note');
+    if (ta) ta.style.borderColor = '';
+  }
+}
+
 </script>
 </body>
 </html>
