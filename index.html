@@ -322,7 +322,7 @@ a{color:inherit;text-decoration:none;}
         <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);padding:5px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;">MSG</div>
       </div>
     </div>
-    <div id="shift-status-pill" style="display:none;font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;border-radius:100px;background:rgba(224,154,61,.15);color:var(--amber);border:1px solid rgba(224,154,61,.3);">On Shift</div>
+    <div id="shift-status-pill' style="display:none;font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;border-radius:100px;background:rgba(224,154,61,.15);color:var(--amber);border:1px solid rgba(224,154,61,.3);">On Shift</div>
   </div>
 </div>
 
@@ -333,7 +333,6 @@ a{color:inherit;text-decoration:none;}
   <div class="nav-tab" onclick="showSect('checklist')">Checklist</div>
   <div class="nav-tab" onclick="showSect('clients')">Clients</div>
   <div class="nav-tab" onclick="showSect('messages')">Messages <span class="nav-badge" id="msg-badge">0</span></div>
-  <div class="nav-tab" onclick="showSect('offers')">Offers <span class="nav-badge" id="offers-badge">0</span></div>
   <div class="nav-tab" onclick="showSect('offers')">Offers <span class="nav-badge" id="offers-badge">0</span></div>
   <div class="nav-tab" onclick="showSect('documents')">Documents</div>
   <div class="nav-tab" onclick="showSect('pay')">Pay</div>
@@ -445,7 +444,6 @@ a{color:inherit;text-decoration:none;}
     <div style="font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--green3);margin-bottom:5px;" id="cl-care-lbl">Care Plan</div>
     <div style="font-size:12px;color:var(--muted2);line-height:1.65;" id="cl-care-text">Sign in to a visit to see care plan.</div>
   </div>
-
   <div class="cl-progress">
     <div class="cl-progress-label">Tasks completed</div>
     <div class="cl-progress-count" id="cl-count">0 / 0</div>
@@ -602,7 +600,7 @@ a{color:inherit;text-decoration:none;}
     </div>
     <div style="display:flex;gap:8px;margin-top:4px;">
       <button id="vd-signin-btn" onclick="checkInFromDetail()" style="flex:2;background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;padding:15px;font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;border-radius:12px;border:none;cursor:pointer;min-height:52px;touch-action:manipulation;">Sign In Now</button>
-      <a id="vd-dir-btn" href="#" target="_blank" style="flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--green3);padding:15px;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-radius:12px;cursor:pointer;min-height:52px;text-decoration:none;display:flex;align-items:center;justify-content:center;">Map</a>
+      <a id="vd-dir-btn" href="#" target="_blank" style="flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--green3);padding:15px;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-radius:12px;min-height:52px;text-decoration:none;display:flex;align-items:center;justify-content:center;">Map</a>
     </div>
   </div>
 </div>
@@ -1074,7 +1072,6 @@ async function loadClients() {
     }).join('');
     clientsCache = clients;
     updateCarePlanBanner();
-    // Populate Sign In dropdown dynamically
     const sel = document.getElementById('signin-client');
     if (sel) {
       sel.innerHTML = '<option value="">Select client...</option>' +
@@ -1191,8 +1188,7 @@ async function loadPaySummary() {
     });
     el.innerHTML = html;
     loadAvailability();
-    payCache = d;
-    updateEarningsWidget(d);
+    payCache = d; updateEarningsWidget(d);
   } catch { el.innerHTML = '<div class="empty-state">Could not load pay summary</div>'; }
 }
 
@@ -1285,87 +1281,86 @@ if ('serviceWorker' in navigator) {
 function updateTodayView() {
   const now = new Date();
   const h = now.getHours();
-  const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const first = pswName.split(' ')[0] || '';
-  // Update greeting if element exists (future premium home card)
+  const g = h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  const first = pswName.split(' ')[0]||'';
   const gEl = document.getElementById('today-greeting');
-  if (gEl) gEl.textContent = g + (first ? ', ' + first : '');
+  if(gEl) gEl.textContent = g+(first?', '+first:'');
 }
 
 function updateEarningsWidget(d) {
-  if (!d || !d.current_period) return;
+  if(!d||!d.current_period) return;
   const el = document.getElementById('s-earnings');
-  if (el) el.textContent = '$' + (d.current_period.total_pay||0).toFixed(0);
+  if(el) el.textContent = '$'+(d.current_period.total_pay||0).toFixed(0);
 }
 
 // ── CARE PLAN BANNER ──
 function updateCarePlanBanner() {
   const banner = document.getElementById('cl-care-banner');
-  if (!banner) return;
-  if (!activeVisit) { banner.style.display = 'none'; return; }
-  banner.style.display = 'block';
-  const cName = activeVisit.client_name || '';
-  const lbl = document.getElementById('cl-care-lbl');
-  if (lbl) lbl.textContent = cName + ' · Care Plan';
-  const cl = (clientsCache||[]).find(c => (c.full_name||c.client_name) === cName);
-  const txt = document.getElementById('cl-care-text');
-  if (!txt) return;
-  const plan = cl?.care_plan || cl?.daily_routine || '';
-  txt.textContent = plan ? plan.slice(0,200) + (plan.length>200?'...':'') : 'No care plan on file. Check the Clients tab.';
+  if(!banner) return;
+  if(!activeVisit){banner.style.display='none';return;}
+  banner.style.display='block';
+  const cName=activeVisit.client_name||'';
+  const lbl=document.getElementById('cl-care-lbl');
+  if(lbl) lbl.textContent=cName+' · Care Plan';
+  const cl=(clientsCache||[]).find(c=>(c.full_name||c.client_name)===cName);
+  const txt=document.getElementById('cl-care-text');
+  if(!txt)return;
+  const plan=cl?.care_plan||cl?.daily_routine||'';
+  txt.textContent=plan?plan.slice(0,200)+(plan.length>200?'...':''):'No care plan on file. Check the Clients tab.';
 }
 
 // ── VISIT DETAIL SHEET ──
 function openVD(booking) {
-  if (typeof booking === 'string') { try { booking = JSON.parse(booking); } catch { return; } }
-  document.getElementById('vd-name').textContent = booking.client_name || '—';
-  const t = (booking.scheduled_date ? fmtd(booking.scheduled_date) : '') + (booking.scheduled_time ? ' · '+booking.scheduled_time : '');
-  document.getElementById('vd-time').textContent = t || '—';
-  const cl = (clientsCache||[]).find(c => (c.full_name||c.client_name) === booking.client_name);
-  document.getElementById('vd-address').textContent = cl?.address || booking.location || '—';
-  const ec = cl?.emergency_contact_1_name || cl?.emergency_contact_name || '—';
-  const ep = cl?.emergency_contact_1_phone || cl?.emergency_contact_phone || '';
-  document.getElementById('vd-contact').textContent = ec + (ep ? ' · '+ep : '');
-  const cp = cl?.care_plan || cl?.daily_routine || '';
-  const cpSec = document.getElementById('vd-cp-sec');
-  if (cp) { cpSec.style.display='block'; document.getElementById('vd-cp').textContent = cp.slice(0,300); }
-  else { cpSec.style.display='none'; }
-  const ms = document.getElementById('vd-med-sec');
-  if (cl?.medications) { ms.style.display='block'; document.getElementById('vd-med').textContent = cl.medications; }
-  else { ms.style.display='none'; }
-  const addr = cl?.address || booking.location || '';
-  document.getElementById('vd-dir-btn').href = addr && addr!=='—' ? 'https://maps.google.com/?q='+encodeURIComponent(addr) : '#';
-  const btn = document.getElementById('vd-signin-btn');
-  if (activeVisit) { btn.textContent='Already on shift'; btn.disabled=true; btn.style.opacity='.5'; }
-  else {
-    const sel = document.getElementById('signin-client');
-    if (sel) sel.value = booking.client_name || '';
-    btn.textContent='Sign In Now'; btn.disabled=false; btn.style.opacity='1';
+  if(typeof booking==='string'){try{booking=JSON.parse(booking);}catch{return;}}
+  document.getElementById('vd-name').textContent=booking.client_name||'—';
+  const t=(booking.scheduled_date?fmtd(booking.scheduled_date):'')+(booking.scheduled_time?' · '+booking.scheduled_time:'');
+  document.getElementById('vd-time').textContent=t||'—';
+  const cl=(clientsCache||[]).find(c=>(c.full_name||c.client_name)===booking.client_name);
+  document.getElementById('vd-address').textContent=cl?.address||booking.location||'—';
+  const ec=cl?.emergency_contact_1_name||cl?.emergency_contact_name||'—';
+  const ep=cl?.emergency_contact_1_phone||cl?.emergency_contact_phone||'';
+  document.getElementById('vd-contact').textContent=ec+(ep?' · '+ep:'');
+  const cp=cl?.care_plan||cl?.daily_routine||'';
+  const cpSec=document.getElementById('vd-cp-sec');
+  if(cp){cpSec.style.display='block';document.getElementById('vd-cp').textContent=cp.slice(0,300);}
+  else cpSec.style.display='none';
+  const ms=document.getElementById('vd-med-sec');
+  if(cl?.medications){ms.style.display='block';document.getElementById('vd-med').textContent=cl.medications;}
+  else ms.style.display='none';
+  const addr=cl?.address||booking.location||'';
+  document.getElementById('vd-dir-btn').href=addr&&addr!=='—'?'https://maps.google.com/?q='+encodeURIComponent(addr):'#';
+  const btn=document.getElementById('vd-signin-btn');
+  if(activeVisit){btn.textContent='Already on shift';btn.disabled=true;btn.style.opacity='.5';}
+  else{
+    const sel=document.getElementById('signin-client');
+    if(sel)sel.value=booking.client_name||'';
+    btn.textContent='Sign In Now';btn.disabled=false;btn.style.opacity='1';
   }
-  document.getElementById('vd-sheet').style.display = 'block';
-  document.body.style.overflow = 'hidden';
+  document.getElementById('vd-sheet').style.display='block';
+  document.body.style.overflow='hidden';
 }
-function closeVD() {
-  document.getElementById('vd-sheet').style.display = 'none';
-  document.body.style.overflow = '';
+function closeVD(){
+  document.getElementById('vd-sheet').style.display='none';
+  document.body.style.overflow='';
 }
-async function checkInFromDetail() { closeVD(); await doCheckIn(); }
+async function checkInFromDetail(){closeVD();await doCheckIn();}
 
 // ── OFFERS ──
-async function loadOffers() {
-  const el = document.getElementById('offers-list');
-  if (!el) return;
-  try {
-    if (!scheduleData) await loadSchedule();
-    const bookings = (scheduleData?.bookings||[]).filter(b => !b.assigned_to || b.assigned_to.trim() === '');
-    offersData = bookings;
-    const badge = document.getElementById('offers-badge');
-    if (!bookings.length) {
-      el.innerHTML = '<div class="empty-state">No open shifts right now</div>';
-      if (badge) { badge.textContent='0'; badge.classList.remove('show'); }
+async function loadOffers(){
+  const el=document.getElementById('offers-list');
+  if(!el)return;
+  try{
+    if(!scheduleData)await loadSchedule();
+    const bookings=(scheduleData?.bookings||[]).filter(b=>!b.assigned_to||b.assigned_to.trim()==='');
+    offersData=bookings;
+    const badge=document.getElementById('offers-badge');
+    if(!bookings.length){
+      el.innerHTML='<div class="empty-state">No open shifts right now</div>';
+      if(badge){badge.textContent='0';badge.classList.remove('show');}
       return;
     }
-    if (badge) { badge.textContent=bookings.length; badge.classList.add('show'); }
-    el.innerHTML = bookings.map((b,i) => `
+    if(badge){badge.textContent=bookings.length;badge.classList.add('show');}
+    el.innerHTML=bookings.map((b,i)=>`
       <div class="card">
         <div class="card-header">
           <div>
@@ -1379,29 +1374,25 @@ async function loadOffers() {
           <div class="card-act danger" onclick="declineOffer(${i})">Decline</div>
         </div>
       </div>`).join('');
-  } catch { el.innerHTML = '<div class="empty-state">Could not load offers</div>'; }
+  }catch{el.innerHTML='<div class="empty-state">Could not load offers</div>';}
 }
-
-async function acceptOffer(idx) {
-  const offer = offersData[idx];
-  if (!offer) return;
-  try {
-    if (offer.broadcast_token) {
+async function acceptOffer(idx){
+  const offer=offersData[idx];if(!offer)return;
+  try{
+    if(offer.broadcast_token)
       await fetch(`${API}/hq/broadcast-accept?token=${offer.broadcast_token}&psw_name=${encodeURIComponent(pswName)}`);
-    } else if (offer.id) {
-      await fetch(`${API}/hq/booking/${offer.id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({assigned_to:pswName,operator_id:'proximity-care'}) });
-    }
-    showToast('Shift accepted', 'ok');
-    await loadSchedule(); loadOffers();
-  } catch { showToast('Could not accept', 'err'); }
+    else if(offer.id)
+      await fetch(`${API}/hq/booking/${offer.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({assigned_to:pswName,operator_id:'proximity-care'})});
+    showToast('Shift accepted','ok');
+    await loadSchedule();loadOffers();
+  }catch{showToast('Could not accept','err');}
 }
-
-function declineOffer(idx) { offersData.splice(idx,1); loadOffers(); showToast('Declined','ok'); }
+function declineOffer(idx){offersData.splice(idx,1);loadOffers();showToast('Declined','ok');}
 
 // ── NOTIFICATION DOT ──
-function updateNotifDot(show) {
-  const d = document.getElementById('topbar-notif-dot');
-  if (d) d.style.display = show ? 'block' : 'none';
+function updateNotifDot(show){
+  const d=document.getElementById('topbar-notif-dot');
+  if(d)d.style.display=show?'block':'none';
 }
 
 </script>
