@@ -1,11 +1,41 @@
-const CACHE = 'psw-v2';
+// Proximity Care PSW Portal — Service Worker
+// Increment CACHE_VERSION any time you deploy new files
+const CACHE_VERSION = 'psw-v4';
+const CACHE_NAME = `proximity-psw-${CACHE_VERSION}`;
+
+const PRECACHE = [
+  '/',
+  '/index.html',
+  '/psw-manifest.json',
+];
+
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.add('/')).then(() => self.skipWaiting()));
+  // Skip waiting forces the new SW to activate immediately
+  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE).catch(() => {}))
+  );
 });
+
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  // Delete all old caches
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
 });
+
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('railway.app')) return;
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  // Network-first for HTML — always get latest
+  if (e.request.mode === 'navigate' || e.request.headers.get('accept')?.includes('text/html')) {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+  // Cache-first for everything else
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request))
+  );
 });
