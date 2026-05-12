@@ -1038,15 +1038,9 @@ function renderWeek() {
       const active = activeVisit && activeVisit.client_name === b.client_name && isToday;
       if (done || active) return;
       if (isToday && !activeVisit) {
-        // Today + no active visit = show Sign In button directly on shift card
-        rows += `<div class="sched-shift" style="background:rgba(61,138,122,.03);">
-          <div style="flex:1;min-width:0;">
-            <div class="shift-client">${b.client_name||'—'}</div>
-            <div class="shift-time">${b.scheduled_time||'TBD'}</div>
-          </div>
-          <button onclick="doCheckInFromShift('${(b.client_name||'').replace(/'/g,'\\'')}")"
-            style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#fff;background:var(--teal);border:none;border-radius:6px;padding:7px 14px;cursor:pointer;min-height:34px;white-space:nowrap;touch-action:manipulation;flex-shrink:0;">Sign In</button>
-        </div>`;
+        // Today + no active visit — Sign In button on the shift card directly
+        const safeClient = (b.client_name||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+        rows += `<div class="sched-shift" style="background:rgba(61,138,122,.03);"><div style="flex:1;min-width:0;"><div class="shift-client">${b.client_name||'—'}</div><div class="shift-time">${b.scheduled_time||'TBD'}</div></div><button class="shift-signin-btn" data-client="${safeClient}" style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#fff;background:var(--teal);border:none;border-radius:6px;padding:7px 14px;cursor:pointer;min-height:34px;white-space:nowrap;touch-action:manipulation;flex-shrink:0;">Sign In</button></div>`;
       } else {
         rows += `<div class="sched-shift"><div><div class="shift-client">${b.client_name||'—'}</div><div class="shift-time">${b.scheduled_time||'TBD'}</div></div><div class="shift-badge upcoming">Upcoming</div></div>`;
       }
@@ -1056,6 +1050,14 @@ function renderWeek() {
   }).join('');
 }
 function shiftWeek(dir) { weekOffset += dir; renderWeek(); }
+
+// Event delegation for shift Sign In buttons — avoids all escaping issues
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.shift-signin-btn');
+  if (!btn) return;
+  const clientName = btn.dataset.client;
+  if (clientName) doCheckInFromShift(clientName);
+});
 
 // ── BUILD 7: AVAILABLE SHIFTS ──
 function renderAvailableShifts() {
