@@ -29,6 +29,18 @@ html{height:100%;background:var(--bg);}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:calc(64px + var(--safe-bottom));}
 button{font-family:var(--sans);cursor:pointer;border:none;background:none;transition:transform 80ms ease;}
 button:active{transform:scale(0.97);}
+.week-strip{display:flex;gap:6px;padding:10px 12px 4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.week-strip::-webkit-scrollbar{display:none;}
+.week-chip{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;min-width:44px;touch-action:manipulation;transition:all .15s;}
+.week-chip.today{border-color:var(--teal2);background:rgba(61,138,122,.08);}
+.week-chip.selected{background:var(--teal);border-color:var(--teal);}
+.week-chip.selected .wc-day,.week-chip.selected .wc-num{color:#fff;}
+.week-chip .wc-day{font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);}
+.week-chip .wc-num{font-size:15px;font-weight:500;color:var(--text);line-height:1;}
+.week-chip .wc-dot{width:4px;height:4px;border-radius:50%;background:var(--teal2);opacity:0;}
+.week-chip.has-shift .wc-dot{opacity:1;}
+.week-chip.today .wc-day{color:var(--teal2);}
+.week-chip.today .wc-num{color:var(--teal2);}
 input,select,textarea{font-family:var(--sans);font-size:16px;}
 a{color:inherit;text-decoration:none;}
 
@@ -456,6 +468,7 @@ a{color:inherit;text-decoration:none;}
     <div id="avail-shifts-list"></div>
   </div>
 
+  <div id="week-strip" class="week-strip"></div>
   <div class="week-nav">
     <button class="week-btn" onclick="shiftWeek(-1)">← Prev</button>
     <div class="week-lbl" id="week-label">This Week</div>
@@ -619,6 +632,7 @@ let lockIn = '', appUnlocked = false;
 let activeVisit = null;
 let selectedMood = 'Great';
 let weekOffset = 0;
+let selectedDay = null; // Build 17 — week strip selected day (YYYY-MM-DD)
 let scheduleData = null;
 let elapsedTimer = null;
 let idleTimer = null; // Build 6
@@ -1039,7 +1053,30 @@ function renderWeek() {
   const bookings = scheduleData?.bookings || [];
   const visits = scheduleData?.completed_visits || [];
   const todayStr = new Date().toISOString().slice(0,10);
-  el.innerHTML = days.map(d => {
+
+  // Build 17 — render week strip
+  const strip = document.getElementById('week-strip');
+  if (strip) {
+    strip.innerHTML = days.map(d => {
+      const ds = d.toISOString().slice(0,10);
+      const isToday = ds === todayStr;
+      const isSelected = selectedDay === ds || (!selectedDay && isToday && weekOffset === 0);
+      const hasShift = bookings.some(b => b.scheduled_date === ds) || visits.some(v => v.visit_date === ds);
+      const dayName = d.toLocaleDateString('en-CA', {weekday:'short'}).slice(0,2).toUpperCase();
+      const dayNum = d.getDate();
+      return `<div class="week-chip${isToday?' today':''}${isSelected?' selected':''}${hasShift?' has-shift':''}" onclick="selectDay('${ds}')">
+        <div class="wc-day">${dayName}</div>
+        <div class="wc-num">${dayNum}</div>
+        <div class="wc-dot"></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Filter days to show — if a day is selected show only that day, otherwise show all 7
+  const activeDayStr = selectedDay || null;
+  const daysToRender = activeDayStr ? days.filter(d => d.toISOString().slice(0,10) === activeDayStr) : days;
+
+  el.innerHTML = daysToRender.map(d => {
     const ds = d.toISOString().slice(0,10);
     const isToday = ds === todayStr;
     const dayLabel = d.toLocaleDateString('en-CA', {weekday:'short',month:'short',day:'numeric'});
@@ -1058,8 +1095,6 @@ function renderWeek() {
       const active = activeVisit && activeVisit.client_name === b.client_name && isToday;
       if (done || active) return;
       if (isToday && !activeVisit) {
-        // Today + no active visit = show Sign In button directly on shift card
-        // NEVER use inline onclick with dynamic client names — escaping collision crashes JS block
         const safeName = (b.client_name||'').replace(/"/g,'&quot;');
         rows += `<div class="sched-shift" style="background:rgba(61,138,122,.03);">
           <div style="flex:1;min-width:0;">
@@ -1077,7 +1112,8 @@ function renderWeek() {
     return `<div class="sched-day"><div class="sched-day-hdr"><div class="sched-day-lbl ${isToday?'today':''}">${dayLabel}${isToday?' · Today':''}</div></div>${rows}</div>`;
   }).join('');
 }
-function shiftWeek(dir) { weekOffset += dir; renderWeek(); }
+function selectDay(ds) { selectedDay = selectedDay === ds ? null : ds; renderWeek(); }
+function shiftWeek(dir) { weekOffset += dir; selectedDay = null; renderWeek(); }
 
 // ── BUILD 7: AVAILABLE SHIFTS ──
 function renderAvailableShifts() {
