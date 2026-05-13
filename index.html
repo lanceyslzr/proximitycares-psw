@@ -801,7 +801,7 @@ function lockApp() {
   appUnlocked = false;
   pswPin = '';
   lockIn = '';
-  try { localStorage.removeItem('psw_pin'); } catch {} // Clear pin on lock, keep name for convenience
+  try { localStorage.removeItem('psw_pin'); } catch {}
   // Reset PIN dots
   for (let i = 0; i < 4; i++) {
     const d = document.getElementById('ld'+i);
@@ -859,7 +859,6 @@ async function verifyPin() {
 
 function unlockApp() {
   appUnlocked = true;
-  // Persist auth across refreshes
   try { localStorage.setItem('psw_name', pswName); localStorage.setItem('psw_pin', pswPin); } catch {}
   history.pushState(null, '', window.location.href);
   document.getElementById('lock').style.display = 'none';
@@ -1244,21 +1243,13 @@ function openCheckout() {
 function closeCheckout() {
   document.getElementById('checkout-sheet').style.display = 'none';
   document.body.style.overflow = '';
-  const meds = document.getElementById('co-meds');
-  const photos = document.getElementById('co-photos');
-  const preview = document.getElementById('co-photo-preview');
-  const playback = document.getElementById('co-voice-playback');
-  const status = document.getElementById('co-record-status');
-  const btn = document.getElementById('co-record-btn');
-  if (meds) meds.value = '';
-  if (photos) photos.value = '';
-  if (preview) preview.innerHTML = '';
-  if (playback) { playback.src = ''; playback.style.display = 'none'; }
-  if (status) status.textContent = '';
-  if (btn) { btn.style.borderColor = 'var(--border2)'; btn.style.color = 'var(--muted2)'; }
-  if (window._mediaRecorder && window._mediaRecorder.state === 'recording') {
-    window._mediaRecorder.stop(); clearInterval(window._recordTimer);
-  }
+  ['co-meds','co-incident'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const photos = document.getElementById('co-photos'); if(photos) photos.value = '';
+  const preview = document.getElementById('co-photo-preview'); if(preview) preview.innerHTML = '';
+  const playback = document.getElementById('co-voice-playback'); if(playback) { playback.src = ''; playback.style.display = 'none'; }
+  const status = document.getElementById('co-record-status'); if(status) status.textContent = '';
+  const btn = document.getElementById('co-record-btn'); if(btn) { btn.style.borderColor = 'var(--border2)'; btn.style.color = 'var(--muted2)'; }
+  if (window._mediaRecorder && window._mediaRecorder.state === 'recording') { window._mediaRecorder.stop(); clearInterval(window._recordTimer); }
   window._voiceNoteUrl = null; window._voiceBlob = null;
 }
 
@@ -1274,7 +1265,6 @@ async function doCheckOut() {
   const medsRaw = (document.getElementById('co-meds')?.value || '').trim();
   const medsArr = medsRaw ? medsRaw.split(/[,\n]+/).map(m => m.trim()).filter(Boolean) : [];
   const voiceNoteUrl = window._voiceNoteUrl || null;
-
   let taskPhotoUrls = [];
   const photoFiles = document.getElementById('co-photos')?.files;
   if (photoFiles && photoFiles.length && navigator.onLine) {
@@ -1293,10 +1283,9 @@ async function doCheckOut() {
             if (ud.url) taskPhotoUrls.push(ud.url);
           }
         }
-      } catch { /* non-blocking */ }
+      } catch {}
     }
   }
-
   const payload = {
     psw_name: pswName, pin: pswPin, operator_id: 'proximity-care',
     visit_id: activeVisit.id,
@@ -1625,38 +1614,22 @@ window.addEventListener('popstate', () => {
   if (cur && cur !== 'home') { history.pushState(null,'',window.location.href); showSect('home'); }
 });
 
-// Session restore — skip PIN if already authenticated this session
+
+// ── SESSION RESTORE — skip PIN if already authenticated ──
 (function() {
   try {
     const savedName = localStorage.getItem('psw_name');
     const savedPin = localStorage.getItem('psw_pin');
     if (savedName && savedPin) {
-      pswName = savedName;
-      pswPin = savedPin;
-      // Silently verify PIN still valid before restoring session
+      pswName = savedName; pswPin = savedPin;
       fetch(`${API}/psw/notes/${encodeURIComponent(savedName)}?pin=${savedPin}&operator_id=proximity-care`)
-        .then(r => {
-          if (r.ok) {
-            unlockApp();
-          } else {
-            // PIN invalid — clear and show lock
-            localStorage.removeItem('psw_name');
-            localStorage.removeItem('psw_pin');
-          }
-        })
-        .catch(() => {
-          // Offline — restore anyway, all calls will queue
-          unlockApp();
-        });
+        .then(r => { if (r.ok) { unlockApp(); } else { localStorage.removeItem('psw_name'); localStorage.removeItem('psw_pin'); } })
+        .catch(() => { unlockApp(); }); // offline — restore anyway
     }
   } catch(e) {}
 })();
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/psw-sw.js').catch(()=>{});
-}
-
-// ── VOICE NOTE + PHOTO ──
+// ── VOICE NOTE ──
 window._mediaRecorder = null; window._voiceNoteUrl = null;
 window._voiceBlob = null; window._recordTimer = null;
 
@@ -1667,8 +1640,7 @@ async function toggleVoiceRecord() {
   if (window._mediaRecorder && window._mediaRecorder.state === 'recording') {
     window._mediaRecorder.stop(); clearInterval(window._recordTimer);
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Re-record';
-    btn.style.borderColor = 'var(--border2)'; btn.style.color = 'var(--muted2)';
-    return;
+    btn.style.borderColor='var(--border2)'; btn.style.color='var(--muted2)'; return;
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1677,42 +1649,44 @@ async function toggleVoiceRecord() {
     window._mediaRecorder.ondataavailable = e => chunks.push(e.data);
     window._mediaRecorder.onstop = () => {
       const blob = new Blob(chunks, { type: 'audio/webm' });
-      playback.src = URL.createObjectURL(blob);
-      playback.style.display = 'block';
-      window._voiceBlob = blob;
-      stream.getTracks().forEach(t => t.stop());
-      status.textContent = 'Ready';
+      playback.src = URL.createObjectURL(blob); playback.style.display = 'block';
+      window._voiceBlob = blob; stream.getTracks().forEach(t => t.stop()); status.textContent = 'Ready';
     };
     window._mediaRecorder.start();
     let secs = 0;
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Stop';
-    btn.style.borderColor = 'var(--red)'; btn.style.color = 'var(--red)';
+    btn.style.borderColor='var(--red)'; btn.style.color='var(--red)';
     window._recordTimer = setInterval(() => {
-      secs++;
-      status.textContent = secs + 's / 30s';
+      secs++; status.textContent = secs + 's / 30s';
       if (secs >= 30) {
         window._mediaRecorder.stop(); clearInterval(window._recordTimer);
         btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Re-record';
-        btn.style.borderColor = 'var(--border2)'; btn.style.color = 'var(--muted2)';
-        status.textContent = 'Max 30s';
+        btn.style.borderColor='var(--border2)'; btn.style.color='var(--muted2)'; status.textContent = 'Max 30s';
       }
     }, 1000);
   } catch(e) { showToast('Microphone access denied', 'err'); }
 }
 
 function previewPhotos(input) {
-  const preview = document.getElementById('co-photo-preview');
-  if (!preview) return;
+  const preview = document.getElementById('co-photo-preview'); if (!preview) return;
   preview.innerHTML = '';
   Array.from(input.files).slice(0,4).forEach(file => {
-    const url = URL.createObjectURL(file);
-    const img = document.createElement('img');
-    img.src = url;
+    const img = document.createElement('img'); img.src = URL.createObjectURL(file);
     img.style.cssText = 'width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border2);';
     preview.appendChild(img);
   });
 }
 
+if ('serviceWorker' in navigator) {
+  // Force cache refresh on SW update
+  navigator.serviceWorker.register('/psw-sw.js').then(reg => {
+    reg.update(); // Check for SW update on every load
+  }).catch(()=>{});
+  // If a new SW is waiting, activate it immediately
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
+}
 </script>
 </body>
 </html>
