@@ -2,7 +2,7 @@
 // Upgraded: offline queue sync + web push notifications + cache bust
 const CACHE = 'proximity-psw-v5';
 const STATIC = [
-  '/psw-portal.html',
+  '/index.html',
   '/psw-manifest.json',
   '/psw-icon-192.png',
   'https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap'
@@ -65,7 +65,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(cache => cache.put(e.request, clone));
         }
         return res;
-      }).catch(() => caches.match('/psw-portal.html'));
+      }).catch(() => caches.match('/index.html'));
     })
   );
 });
