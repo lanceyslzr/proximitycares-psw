@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1006,7 +1007,7 @@ function renderHomeFeed() {
     const hrs = parseFloat(v.hours_worked||0);
     rows.push(`<div class="feed-row">
       <div class="feed-dot done"></div>
-      <div class="feed-body"><div class="feed-client">${v.client_name||'—'}</div><div class="feed-meta">${v.time_in||'—'} – ${v.time_out||'—'}</div></div>
+      <div class="feed-body"><div class="feed-client">${v.client_name||'—'}</div><div class="feed-meta">${fmtTime(v.time_in)} – ${v.time_out?fmtTime(v.time_out):'—'}</div></div>
       <div class="feed-right"><div class="feed-hrs">${hrs.toFixed(1)}h</div><div class="feed-time">${v.client_mood||''}</div></div>
     </div>`);
   });
@@ -1024,7 +1025,7 @@ function renderHomeFeed() {
     const hrs = parseFloat(v.hours_worked||0);
     rows.push(`<div class="feed-row">
       <div class="feed-dot past"></div>
-      <div class="feed-body"><div class="feed-client">${v.client_name||'—'}</div><div class="feed-meta">${fmtd(v.visit_date)} · ${v.time_in||'—'}${v.time_out?' – '+v.time_out:''}</div></div>
+      <div class="feed-body"><div class="feed-client">${v.client_name||'—'}</div><div class="feed-meta">${fmtd(v.visit_date)} · ${fmtTime(v.time_in)}${v.time_out?' – '+fmtTime(v.time_out):''}</div></div>
       <div class="feed-right"><div class="feed-hrs" style="color:var(--muted2);">${hrs.toFixed(1)}h</div></div>
     </div>`);
   });
@@ -1058,7 +1059,7 @@ function renderWeek() {
     const dayBookings = bookings.filter(b => b.scheduled_date === ds);
     let rows = '';
     dayVisits.forEach(v => {
-      rows += `<div class="sched-shift"><div><div class="shift-client">${v.client_name||'—'}</div><div class="shift-time">${v.time_in||'—'} – ${v.time_out||'—'} · ${v.hours_worked||0}h</div></div><div class="shift-badge done">Done</div></div>`;
+      rows += `<div class="sched-shift"><div><div class="shift-client">${v.client_name||'—'}</div><div class="shift-time">${fmtTime(v.time_in)} – ${v.time_out?fmtTime(v.time_out):'—'} · ${v.hours_worked||0}h</div></div><div class="shift-badge done">Done</div></div>`;
     });
     if (isToday && activeVisit) {
       const tin = activeVisit.time_in || (activeVisit.checkin_time||'').slice(11,16) || '—';
@@ -1591,7 +1592,17 @@ function showSect(name) {
 function fmtd(str) {
   if (!str) return '—';
   const d = new Date(str.includes('T') ? str : str+'T12:00:00');
-  return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'});
+  return d.toLocaleDateString('en-CA',{month:'short',day:'numeric',timeZone:'America/Toronto'});
+}
+function fmtTime(str) {
+  if (!str) return '—';
+  if (str.includes('T') || str.includes('Z') || str.includes('+')) {
+    return new Date(str).toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',timeZone:'America/Toronto'});
+  }
+  // Raw "HH:MM:SS" from DB — treat as UTC, convert to Toronto
+  const [h,m] = str.split(':');
+  const d = new Date(); d.setUTCHours(parseInt(h), parseInt(m), 0, 0);
+  return d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit',timeZone:'America/Toronto'});
 }
 function ago(str) {
   if (!str) return '—';
