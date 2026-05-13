@@ -591,8 +591,8 @@ a{color:inherit;text-decoration:none;}
       <textarea class="form-textarea" id="co-obs" placeholder="Anything to flag from today's visit..."></textarea>
     </div>
     <div style="margin-bottom:14px;">
-      <label class="form-label">Medications Given <span style="font-size:10px;color:var(--muted);font-weight:400;">(optional — list each med given)</span></label>
-      <textarea class="form-textarea" id="co-meds" placeholder="e.g. Metformin 500mg, Lisinopril 10mg, Aspirin 81mg" style="min-height:52px;resize:none;"></textarea>
+      <label class="form-label">Medications Given <span style="font-size:10px;color:var(--muted);font-weight:400;">(optional)</span></label>
+      <textarea class="form-textarea" id="co-meds" placeholder="e.g. Metformin 500mg, Lisinopril 10mg" style="min-height:52px;resize:none;"></textarea>
     </div>
     <div style="margin-bottom:14px;">
       <label class="form-label">Task Photos <span style="font-size:10px;color:var(--muted);font-weight:400;">(optional — up to 4)</span></label>
@@ -801,6 +801,7 @@ function lockApp() {
   appUnlocked = false;
   pswPin = '';
   lockIn = '';
+  try { localStorage.removeItem('psw_pin'); } catch {} // Clear pin on lock, keep name for convenience
   // Reset PIN dots
   for (let i = 0; i < 4; i++) {
     const d = document.getElementById('ld'+i);
@@ -858,6 +859,8 @@ async function verifyPin() {
 
 function unlockApp() {
   appUnlocked = true;
+  // Persist auth across refreshes
+  try { localStorage.setItem('psw_name', pswName); localStorage.setItem('psw_pin', pswPin); } catch {}
   history.pushState(null, '', window.location.href);
   document.getElementById('lock').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -1241,7 +1244,6 @@ function openCheckout() {
 function closeCheckout() {
   document.getElementById('checkout-sheet').style.display = 'none';
   document.body.style.overflow = '';
-  // Clear new fields
   const meds = document.getElementById('co-meds');
   const photos = document.getElementById('co-photos');
   const preview = document.getElementById('co-photo-preview');
@@ -1255,11 +1257,9 @@ function closeCheckout() {
   if (status) status.textContent = '';
   if (btn) { btn.style.borderColor = 'var(--border2)'; btn.style.color = 'var(--muted2)'; }
   if (window._mediaRecorder && window._mediaRecorder.state === 'recording') {
-    window._mediaRecorder.stop();
-    clearInterval(window._recordTimer);
+    window._mediaRecorder.stop(); clearInterval(window._recordTimer);
   }
-  window._voiceNoteUrl = null;
-  window._voiceBlob = null;
+  window._voiceNoteUrl = null; window._voiceBlob = null;
 }
 
 async function doCheckOut() {
@@ -1271,12 +1271,10 @@ async function doCheckOut() {
   const incident = document.getElementById('co-incident').value.trim();
   const btn = document.getElementById('co-submit-btn');
   btn.textContent = 'Submitting...'; btn.disabled = true;
-  // Collect new fields
   const medsRaw = (document.getElementById('co-meds')?.value || '').trim();
   const medsArr = medsRaw ? medsRaw.split(/[,\n]+/).map(m => m.trim()).filter(Boolean) : [];
   const voiceNoteUrl = window._voiceNoteUrl || null;
 
-  // Upload photos if any selected
   let taskPhotoUrls = [];
   const photoFiles = document.getElementById('co-photos')?.files;
   if (photoFiles && photoFiles.length && navigator.onLine) {
@@ -1291,7 +1289,6 @@ async function doCheckOut() {
         if (uploadRes?.ok) {
           const ud = await uploadRes.json();
           if (ud.signed_url) {
-            // Upload the actual file to the signed URL
             await fetch(ud.signed_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } }).catch(() => {});
             if (ud.url) taskPhotoUrls.push(ud.url);
           }
@@ -1628,29 +1625,51 @@ window.addEventListener('popstate', () => {
   if (cur && cur !== 'home') { history.pushState(null,'',window.location.href); showSect('home'); }
 });
 
+// Session restore — skip PIN if already authenticated this session
+(function() {
+  try {
+    const savedName = localStorage.getItem('psw_name');
+    const savedPin = localStorage.getItem('psw_pin');
+    if (savedName && savedPin) {
+      pswName = savedName;
+      pswPin = savedPin;
+      // Silently verify PIN still valid before restoring session
+      fetch(`${API}/psw/notes/${encodeURIComponent(savedName)}?pin=${savedPin}&operator_id=proximity-care`)
+        .then(r => {
+          if (r.ok) {
+            unlockApp();
+          } else {
+            // PIN invalid — clear and show lock
+            localStorage.removeItem('psw_name');
+            localStorage.removeItem('psw_pin');
+          }
+        })
+        .catch(() => {
+          // Offline — restore anyway, all calls will queue
+          unlockApp();
+        });
+    }
+  } catch(e) {}
+})();
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/psw-sw.js').catch(()=>{});
 }
 
-// ── VOICE NOTE RECORDING ──
-window._mediaRecorder = null;
-window._voiceNoteUrl = null;
-window._voiceBlob = null;
-window._recordTimer = null;
+// ── VOICE NOTE + PHOTO ──
+window._mediaRecorder = null; window._voiceNoteUrl = null;
+window._voiceBlob = null; window._recordTimer = null;
 
 async function toggleVoiceRecord() {
   const btn = document.getElementById('co-record-btn');
   const status = document.getElementById('co-record-status');
   const playback = document.getElementById('co-voice-playback');
-
   if (window._mediaRecorder && window._mediaRecorder.state === 'recording') {
-    window._mediaRecorder.stop();
-    clearInterval(window._recordTimer);
+    window._mediaRecorder.stop(); clearInterval(window._recordTimer);
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Re-record';
     btn.style.borderColor = 'var(--border2)'; btn.style.color = 'var(--muted2)';
     return;
   }
-
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const chunks = [];
@@ -1658,25 +1677,21 @@ async function toggleVoiceRecord() {
     window._mediaRecorder.ondataavailable = e => chunks.push(e.data);
     window._mediaRecorder.onstop = () => {
       const blob = new Blob(chunks, { type: 'audio/webm' });
-      const url = URL.createObjectURL(blob);
-      playback.src = url;
+      playback.src = URL.createObjectURL(blob);
       playback.style.display = 'block';
       window._voiceBlob = blob;
       stream.getTracks().forEach(t => t.stop());
-      status.textContent = 'Ready to submit';
+      status.textContent = 'Ready';
     };
     window._mediaRecorder.start();
-
     let secs = 0;
     btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>Stop';
     btn.style.borderColor = 'var(--red)'; btn.style.color = 'var(--red)';
-
     window._recordTimer = setInterval(() => {
       secs++;
       status.textContent = secs + 's / 30s';
       if (secs >= 30) {
-        window._mediaRecorder.stop();
-        clearInterval(window._recordTimer);
+        window._mediaRecorder.stop(); clearInterval(window._recordTimer);
         btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Re-record';
         btn.style.borderColor = 'var(--border2)'; btn.style.color = 'var(--muted2)';
         status.textContent = 'Max 30s';
