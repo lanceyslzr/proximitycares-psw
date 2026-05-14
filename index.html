@@ -695,6 +695,20 @@ let scheduleData = null;
 let elapsedTimer = null;
 let idleTimer = null; // Build 6
 
+// ── MULTI-TENANT OPERATOR ID ──
+// Read from ?op= URL param on first load, then persist in localStorage
+// Operators share their portal URL as: psw.proximitycares.ca?op=their-operator-id
+// PSWs bookmark it — operator_id is remembered for all future sessions
+let pswOperatorId = (function() {
+  try {
+    const urlParam = new URLSearchParams(window.location.search).get('op');
+    const stored = localStorage.getItem('psw_operator_id');
+    const opId = urlParam || stored || 'proximity-care';
+    localStorage.setItem('psw_operator_id', opId);
+    return opId;
+  } catch { return 'proximity-care'; }
+})();
+
 // ── NETWORK STATUS ──
 window.addEventListener('online', () => {
   showToast('Back online', 'ok');
@@ -961,7 +975,7 @@ async function loadSchedule() {
   try {
     const now = new Date();
     const fromDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-    const res = await fetch(`${API}/psw/schedule-upcoming?psw_name=${encodeURIComponent(pswName)}&pin=${pswPin}&operator_id=proximity-care&from_date=${fromDate}`);
+    const res = await fetch(`${API}/psw/schedule-upcoming?psw_name=${encodeURIComponent(pswName)}&pin=${pswPin}&operator_id=${pswOperatorId}&from_date=${fromDate}`);
     const d = await res.json();
     if (!d.success) return;
     scheduleData = d;
@@ -1231,7 +1245,7 @@ async function submitCancelShift() {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         psw_name: pswName, pin: pswPin,
-        operator_id: 'proximity-care',
+        operator_id: pswOperatorId,
         booking_id: _cancelShiftData.bookingId,
         reason: fullReason
       })
@@ -1252,7 +1266,7 @@ async function claimShift(bookingId, clientName) {
     const res = await fetch(`${API}/hq/booking/${bookingId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ operator_id: 'proximity-care', assigned_to: pswName })
+      body: JSON.stringify({ operator_id: pswOperatorId, assigned_to: pswName })
     });
     const d = await res.json();
     if (!res.ok || !d.success) throw new Error(d.error || 'Failed');
@@ -1282,7 +1296,7 @@ async function doCheckIn() {
   // Offline path — Build 1
   if (!navigator.onLine) {
     await queueAction('checkin', `${API}/visit/checkin`, {
-      psw_name: pswName, pin: pswPin, operator_id: 'proximity-care',
+      psw_name: pswName, pin: pswPin, operator_id: pswOperatorId,
       client_name: clientName, latitude, longitude, within_range
     });
     // Store optimistic active visit locally
@@ -1343,7 +1357,7 @@ async function confirmCheckin() {
   try {
     const res = await fetch(`${API}/visit/checkin`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ psw_name: pswName, pin: pswPin, operator_id: 'proximity-care', client_name: clientName, latitude, longitude, within_range })
+      body: JSON.stringify({ psw_name: pswName, pin: pswPin, operator_id: pswOperatorId, client_name: clientName, latitude, longitude, within_range })
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Check-in failed');
@@ -1374,7 +1388,7 @@ async function doCheckInFromShift(clientName) {
   // Offline path
   if (!navigator.onLine) {
     await queueAction('checkin', `${API}/visit/checkin`, {
-      psw_name: pswName, pin: pswPin, operator_id: 'proximity-care',
+      psw_name: pswName, pin: pswPin, operator_id: pswOperatorId,
       client_name: clientName, latitude, longitude, within_range
     });
     activeVisit = { id: 'queued-' + Date.now(), client_name: clientName, time_in: new Date().toTimeString().slice(0,5), checkin_time: new Date().toISOString() };
@@ -1437,7 +1451,7 @@ async function doCheckOut() {
         const path = `${(pswName||'psw').replace(/\s+/g,'_').toLowerCase()}/${activeVisit.id}_${Date.now()}.${ext}`;
         const uploadRes = await fetch(`${API}/psw/upload-photo`, {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ psw_name: pswName, pin: pswPin, operator_id: 'proximity-care', path, type: file.type })
+          body: JSON.stringify({ psw_name: pswName, pin: pswPin, operator_id: pswOperatorId, path, type: file.type })
         }).catch(() => null);
         if (uploadRes?.ok) {
           const ud = await uploadRes.json();
@@ -1450,7 +1464,7 @@ async function doCheckOut() {
     }
   }
   const payload = {
-    psw_name: pswName, pin: pswPin, operator_id: 'proximity-care',
+    psw_name: pswName, pin: pswPin, operator_id: pswOperatorId,
     visit_id: activeVisit.id,
     tasks_completed: tasks,
     client_mood: selectedMood,
@@ -1708,7 +1722,7 @@ async function loadDocuments() {
 // ── HOME DATA (pay card) ──
 async function loadHomeData() {
   try {
-    const res = await fetch(`${API}/psw/pay-summary?psw_name=${encodeURIComponent(pswName)}&pin=${pswPin}&operator_id=proximity-care`);
+    const res = await fetch(`${API}/psw/pay-summary?psw_name=${encodeURIComponent(pswName)}&pin=${pswPin}&operator_id=${pswOperatorId}`);
     const d = await res.json();
     if (!d.success || !d.current_period) return;
     const cur = d.current_period;
@@ -1732,7 +1746,7 @@ async function loadPaySummary() {
   if (!el) return;
   el.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
-    const res = await fetch(`${API}/psw/pay-summary?psw_name=${encodeURIComponent(pswName)}&pin=${pswPin}&operator_id=proximity-care`);
+    const res = await fetch(`${API}/psw/pay-summary?psw_name=${encodeURIComponent(pswName)}&pin=${pswPin}&operator_id=${pswOperatorId}`);
     const d = await res.json();
     if (!d.success) throw new Error(d.error);
     const cur = d.current_period;
@@ -1872,7 +1886,7 @@ window.addEventListener('popstate', () => {
     const savedPin = localStorage.getItem('psw_pin');
     if (savedName && savedPin) {
       pswName = savedName; pswPin = savedPin;
-      fetch(`${API}/psw/notes/${encodeURIComponent(savedName)}?pin=${savedPin}&operator_id=proximity-care`)
+      fetch(`${API}/psw/notes/${encodeURIComponent(savedName)}?pin=${savedPin}&operator_id=${pswOperatorId}`)
         .then(r => { if (r.ok) { unlockApp(); } else { localStorage.removeItem('psw_name'); localStorage.removeItem('psw_pin'); } })
         .catch(() => { unlockApp(); }); // offline — restore anyway
     }
