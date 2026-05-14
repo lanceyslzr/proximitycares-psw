@@ -1219,10 +1219,10 @@ async function doCheckInFromShift(clientName) {
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error || 'Check-in failed');
-    activeVisit = { id: d.visit_id, client_name: clientName, time_in: d.time_in, checkin_time: new Date().toISOString() };
+    activeVisit = { id: d.visit_id, client_name: clientName, time_in: d.time_in, checkin_time: d.checkin_time || new Date().toISOString() };
     updateShiftUI(); renderWeek(); renderHomeFeed();
     haptic(200);
-    showToast('Signed in — ' + clientName, 'ok');
+    showToast(d.resumed ? 'Resuming visit — ' + clientName : 'Signed in — ' + clientName, 'ok');
     showSect('checklist');
   } catch (e) { showToast(e.message, 'err'); }
 }
@@ -1321,6 +1321,30 @@ async function doCheckOut() {
       body: JSON.stringify(payload)
     });
     const d = await res.json();
+
+    // EC-1 — sub-8-min warning
+    if (d.sub_8_min) {
+      btn.textContent = 'Check Out + Submit Visit'; btn.disabled = false;
+      const confirmed = window.confirm(d.warning + '\n\nTap OK to check out anyway. This visit will be flagged for review.');
+      if (!confirmed) return;
+      const res2 = await fetch(`${API}/visit/checkout`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ ...payload, force_checkout: true })
+      });
+      const d2 = await res2.json();
+      if (!res2.ok) throw new Error(d2.error || 'Checkout failed');
+      closeCheckout();
+      activeVisit = null;
+      stopElapsed(); resetChecklist(); updateShiftUI();
+      haptic([100, 50, 100]);
+      document.getElementById('success-title').textContent = 'Visit Complete';
+      document.getElementById('success-msg').textContent = `${d2.hours_worked}h logged. Flagged for coordinator review (under 8 min).`;
+      document.getElementById('success-overlay').classList.add('show');
+      await loadSchedule(); loadHomeData();
+      btn.textContent = 'Check Out + Submit Visit'; btn.disabled = false;
+      return;
+    }
+
     if (!res.ok) throw new Error(d.error || 'Checkout failed');
     closeCheckout();
     activeVisit = null;
