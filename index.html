@@ -2031,8 +2031,17 @@ window.addEventListener('popstate', () => {
     if (savedName && savedPin) {
       pswName = savedName; pswPin = savedPin;
       fetch(`${API}/psw/notes/${encodeURIComponent(savedName)}?pin=${savedPin}&operator_id=${pswOperatorId}`)
-        .then(r => { if (r.ok) { unlockApp(); } else { localStorage.removeItem('psw_name'); localStorage.removeItem('psw_pin'); } })
-        .catch(() => { unlockApp(); }); // offline — restore anyway
+        .then(r => {
+          if (r.ok) { unlockApp(); }
+          else if (r.status === 401) {
+            // Wrong PIN — clear and show lock screen
+            localStorage.removeItem('psw_name'); localStorage.removeItem('psw_pin');
+          } else {
+            // Server error (503, 502, etc) — restore anyway, don't lock out PSW
+            unlockApp();
+          }
+        })
+        .catch(() => { unlockApp(); }); // Network error — restore anyway
     }
   } catch(e) {}
 })();
