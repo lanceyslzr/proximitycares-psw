@@ -1,12 +1,13 @@
-// Proximity PSW Portal — Service Worker v5
-// Upgraded: offline queue sync + web push notifications + cache bust
-const CACHE = 'proximity-psw-v5';
+// Proximity PSW Portal — Service Worker v10
+// Fix: index.html never cached (network-first always), cache version bumped
+const CACHE = 'proximity-psw-v10';
 const STATIC = [
-  '/index.html',
   '/psw-manifest.json',
   '/psw-icon-192.png',
   'https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap'
 ];
+// NOTE: index.html intentionally excluded from STATIC cache
+// It is always fetched fresh so PSW portal updates deploy immediately
 
 // ── INSTALL ──
 self.addEventListener('install', e => {
@@ -42,20 +43,30 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Network-first for HTML, cache-first for everything else
-  if (url.pathname.endsWith('.html') || url.pathname === '/') {
+  // index.html — ALWAYS network first, never serve stale
+  // This ensures PSW portal updates are instant on next load
+  if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname === '/index.html') {
     e.respondWith(
-      fetch(e.request).then(res => {
-        if (res && res.status === 200) {
-          const clone = res.clone();
-          caches.open(CACHE).then(cache => cache.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => caches.match(e.request))
+      fetch(e.request, { cache: 'no-store' })
+        .then(res => {
+          // Do NOT cache index.html — return fresh every time
+          return res;
+        })
+        .catch(() => {
+          // Offline — serve cached version as fallback only
+          return caches.match('/index.html');
+        })
     );
     return;
   }
 
+  // Service worker JS files — never cache
+  if (url.pathname.endsWith('.js') && url.pathname.includes('sw')) {
+    e.respondWith(fetch(e.request, { cache: 'no-store' }));
+    return;
+  }
+
+  // Everything else — cache first, network fallback
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
