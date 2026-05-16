@@ -1,6 +1,6 @@
-// Proximity PSW Portal — Service Worker v10
-// Fix: index.html never cached (network-first always), cache version bumped
-const CACHE = 'proximity-psw-v10';
+// Proximity PSW Portal — Service Worker v11
+// Bump: cache bust to force clients onto latest index.html
+const CACHE = 'proximity-psw-v11';
 const STATIC = [
   '/psw-manifest.json',
   '/psw-icon-192.png',
