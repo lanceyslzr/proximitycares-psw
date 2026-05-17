@@ -1,6 +1,6 @@
 // Proximity PSW Portal — Service Worker v12
 // Bump: Session 5 cache bust (visit forms UI)
-const CACHE = 'proximity-psw-v13';
+const CACHE = 'proximity-psw-v14';
 const STATIC = [
   '/psw-manifest.json',
   '/psw-icon-192.png',
