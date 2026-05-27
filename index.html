@@ -263,7 +263,7 @@ a{color:inherit;text-decoration:none;}
 .mood-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
 
 /* MESSAGES */
-.msg-thread{padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-height:200px;}
+.msg-thread{padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-height:200px;max-height:calc(100dvh - 280px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 .msg-bubble{padding:10px 13px;border-radius:10px;max-width:84%;}
 .msg-lance{background:var(--teal);color:#fff;margin-left:auto;border-radius:10px 10px 3px 10px;}
 .msg-psw{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:10px 10px 10px 3px;}
@@ -2554,7 +2554,8 @@ function injectClientChecklistTasks(clientName) {
     if (!routine || routine.trim().length < 3) return;
 
     // Parse routine into tasks — split on newlines or periods followed by capitals
-    const lines = routine.split(/\n|(?<=\.)\s+(?=[A-Z])/).map(l => l.replace(/^[-•*\d.]+\s*/, '').trim()).filter(l => l.length > 2 && l.length < 120);
+    const lines = routine.split(/
+|(?<=\.)\s+(?=[A-Z])/).map(l => l.replace(/^[-•*\d.]+\s*/, '').trim()).filter(l => l.length > 2 && l.length < 120);
     if (!lines.length) return;
 
     // Build section header + task items
