@@ -788,6 +788,8 @@ a{color:inherit;text-decoration:none;}
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M7 1L3 7h4l-2 4 6-6H7L9 1z" fill="#d4a04a"/></svg><span>You're offline — visits will sync when back online</span>
   </div>
 
+  <div id="home-live-date" style="padding:10px 14px 2px;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.5px;"></div>
+
   <div class="stats-strip">
     <div class="stat-card hi"><div class="stat-val" id="s-today">—</div><div class="stat-lbl">Today</div></div>
     <div class="stat-card"><div class="stat-val" id="s-month">—</div><div class="stat-lbl">Period</div></div>
@@ -1020,11 +1022,14 @@ a{color:inherit;text-decoration:none;}
   <div class="section-header"><span class="section-title">Message Lance</span></div>
   <!-- Incident history — read-only, only shows if PSW has incident records -->
   <div id="psw-incident-history" style="display:none;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
-    <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div onclick="toggleIncidentHistory()" style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;">
       <span style="font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">Incident Records</span>
-      <span id="psw-incident-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="psw-incident-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></span>
+        <svg id="psw-incident-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" style="transition:transform .2s;flex-shrink:0;"><path d="M3 5l4 4 4-4" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
     </div>
-    <div id="psw-incident-list" style="padding:0 14px;"></div>
+    <div id="psw-incident-list" style="padding:0 14px;max-height:0;overflow:hidden;transition:max-height .3s ease;"></div>
   </div>
   <div class="msg-thread" id="msg-thread">
     <div class="skeleton-row" style="border-radius:10px;height:44px;max-width:70%;margin-left:auto;"></div>
@@ -1615,6 +1620,7 @@ function unlockApp() {
   setTimeout(checkBiometricOffer, 1500);
   history.pushState(null, '', window.location.href);
   startPSWIdleTimer(); // PHIPA: 5-min lock, 60-min sign-out
+  updateHomeLiveDate(); setInterval(updateHomeLiveDate, 60000); // live clock
   document.getElementById('lock').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   const ini = pswName.split(' ').map(w => w[0]||'').join('').toUpperCase().slice(0,2);
@@ -1768,7 +1774,24 @@ function startElapsed() {
 function stopElapsed() { if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; } }
 
 // ── HOME FEED ──
+// S38 — Live date/time for home screen
+function updateHomeLiveDate() {
+  const el = document.getElementById('home-live-date');
+  if (!el) return;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-CA', {
+    timeZone: 'America/Toronto',
+    weekday: 'long', month: 'long', day: 'numeric'
+  });
+  const timeStr = now.toLocaleTimeString('en-CA', {
+    timeZone: 'America/Toronto',
+    hour: 'numeric', minute: '2-digit', hour12: true
+  }).toUpperCase();
+  el.textContent = dateStr + ' · ' + timeStr;
+}
+
 function renderHomeFeed() {
+  updateHomeLiveDate();
   updateTodayProgress();
   updateSessionBadge();
   updateTimeRemaining();
@@ -2554,7 +2577,8 @@ function injectClientChecklistTasks(clientName) {
     if (!routine || routine.trim().length < 3) return;
 
     // Parse routine into tasks — split on newlines or periods followed by capitals
-    const lines = routine.split(/\n|(?<=\.)\s+(?=[A-Z])/).map(l => l.replace(/^[-•*\d.]+\s*/, '').trim()).filter(l => l.length > 2 && l.length < 120);
+    const lines = routine.split(/
+|(?<=\.)\s+(?=[A-Z])/).map(l => l.replace(/^[-•*\d.]+\s*/, '').trim()).filter(l => l.length > 2 && l.length < 120);
     if (!lines.length) return;
 
     // Build section header + task items
@@ -2584,6 +2608,33 @@ function injectClientChecklistTasks(clientName) {
     const visitLabel = document.getElementById('cl-visit-name');
     if (visitLabel) visitLabel.textContent = clientName;
   } catch (e) { /* non-fatal — generic checklist still works */ }
+}
+
+// S38 — Incident history collapsible toggle
+function toggleIncidentHistory() {
+  const list = document.getElementById('psw-incident-list');
+  const chevron = document.getElementById('psw-incident-chevron');
+  if (!list) return;
+  const isOpen = list.style.maxHeight && list.style.maxHeight !== '0px' && list.style.maxHeight !== '0';
+  if (isOpen) {
+    list.style.maxHeight = '0';
+    if (chevron) chevron.style.transform = '';
+  } else {
+    list.style.maxHeight = list.scrollHeight + 'px';
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  }
+}
+
+// Called after incidents are rendered — expand if there are open incidents
+function openIncidentHistoryIfNeeded() {
+  const list = document.getElementById('psw-incident-list');
+  if (!list) return;
+  const openCount = list.querySelectorAll('.inc-open').length;
+  if (openCount > 0) {
+    list.style.maxHeight = list.scrollHeight + 'px';
+    const chevron = document.getElementById('psw-incident-chevron');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  }
 }
 
 function resetChecklist() {
@@ -2680,7 +2731,7 @@ async function loadMessages(scroll=true) {
       incContainer.style.display = 'block';
       if (incCount) incCount.textContent = incidents.length + ' record' + (incidents.length !== 1 ? 's' : '');
       incList.innerHTML = incidents.map(inc => `
-        <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+        <div class="${inc.resolved ? '' : 'inc-open'}" style="padding:12px 0;border-bottom:1px solid var(--border);">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             <span style="font-size:13px;font-weight:600;color:var(--text);">${inc.visit_date || '—'}</span>
             <span style="font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:100px;border:1px solid ${inc.resolved ? 'rgba(90,170,122,.3)' : 'rgba(224,154,61,.3)'};color:${inc.resolved ? '#5aaa7a' : '#e09a3d'};">${inc.resolved ? 'RESOLVED' : 'OPEN'}</span>
@@ -2688,6 +2739,7 @@ async function loadMessages(scroll=true) {
           <div style="font-size:12px;color:var(--muted);margin-bottom:2px;">Client: ${inc.client_name || '—'}</div>
           ${inc.resolved && inc.resolution_note ? `<div style="font-size:12px;color:var(--text);background:var(--bg3);border-radius:6px;padding:6px 8px;margin-top:6px;">Resolution: ${inc.resolution_note}</div>` : ''}
         </div>`).join('');
+      setTimeout(() => openIncidentHistoryIfNeeded(), 50);
     }
     const unreadNotes = notes.filter(n => n.sender === 'lance' && !n.read_at);
     window._unreadNotes = unreadNotes; // store for renderHomeFeed
