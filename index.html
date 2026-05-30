@@ -723,9 +723,14 @@ a{color:inherit;text-decoration:none;}
   <div class="lock-step" id="lock-step-2">
     <div class="lock-label" id="lock-pin-label">Enter your PIN</div>
     <!-- E1: Biometric button — shown if WebAuthn credential registered -->
-    <button id="biometric-btn" onclick="tryBiometric()" style="display:none;width:100%;padding:14px;background:rgba(74,154,110,.12);border:1.5px solid rgba(74,154,110,.35);border-radius:12px;color:var(--green,#4a9a6e);font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;margin-bottom:14px;touch-action:manipulation;">
+    <button id="biometric-btn" onclick="tryBiometric()" style="display:none;width:100%;padding:14px;background:rgba(74,154,110,.12);border:1.5px solid rgba(74,154,110,.35);border-radius:12px;color:var(--green,#4a9a6e);font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;margin-bottom:8px;touch-action:manipulation;">
       <span id="biometric-icon">⬡</span> Use Face ID / Fingerprint
     </button>
+    <div id="pin-fallback-link" style="display:none;text-align:center;margin-bottom:10px;">
+      <button onclick="showPinInstead()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;touch-action:manipulation;padding:4px 8px;text-decoration:underline;text-underline-offset:3px;">
+        Use PIN instead
+      </button>
+    </div>
     <div class="lock-dots">
       <div class="lock-dot" id="ld0"></div><div class="lock-dot" id="ld1"></div>
       <div class="lock-dot" id="ld2"></div><div class="lock-dot" id="ld3"></div>
@@ -813,7 +818,7 @@ a{color:inherit;text-decoration:none;}
     <div class="sync-dot" id="sync-dot"></div>
     <span id="sync-label">Live</span>
   </div>
-  <div class="stats-strip">
+  <div class="stats-strip" id="stats-strip">
     <div class="stat-card hi"><div class="stat-val" id="s-today">—</div><div class="stat-lbl">Today</div></div>
     <div class="stat-card"><div class="stat-val" id="s-month">—</div><div class="stat-lbl">Period</div></div>
     <div class="stat-card"><div class="stat-val" id="s-hours">—</div><div class="stat-lbl">Hours</div></div>
@@ -1014,6 +1019,46 @@ a{color:inherit;text-decoration:none;}
       <button onclick="addCustomTask()" style="padding:10px 16px;background:rgba(61,138,122,.1);border:1px solid rgba(61,138,122,.3);border-radius:8px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--teal2);cursor:pointer;min-height:44px;touch-action:manipulation;white-space:nowrap;">+ Add</button>
     </div>
     <div class="cl-section-title">Observations &amp; Supplies</div>
+
+    <!-- Blood Pressure -->
+    <div style="margin:0 12px 12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--teal2);margin-bottom:10px;">Blood Pressure</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Systolic (mmHg)</div>
+          <input id="cl-bp-systolic" type="number" min="60" max="250" placeholder="120"
+            style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:16px;font-family:var(--mono);">
+        </div>
+        <div style="font-size:20px;color:var(--muted);padding-top:20px;">/</div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Diastolic (mmHg)</div>
+          <input id="cl-bp-diastolic" type="number" min="40" max="150" placeholder="80"
+            style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:16px;font-family:var(--mono);">
+        </div>
+      </div>
+      <div id="cl-bp-flag" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.25);border-radius:6px;font-size:12px;color:#e05555;"></div>
+    </div>
+
+    <!-- Bowel Movement -->
+    <div style="margin:0 12px 12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--teal2);margin-bottom:10px;">Bowel Movement Today</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+        <div style="font-size:13px;color:var(--muted);">Count:</div>
+        <button onclick="adjustBM(-1)" style="width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:20px;cursor:pointer;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;min-height:44px;">−</button>
+        <span id="cl-bm-count" style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--text);min-width:30px;text-align:center;">0</span>
+        <button onclick="adjustBM(1)" style="width:38px;height:38px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:20px;cursor:pointer;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;min-height:44px;">+</button>
+      </div>
+      <div id="cl-bm-type-row" style="display:none;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Stool type:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="bm-type-btn" onclick="setBMType(this,'Formed')" style="padding:7px 14px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;touch-action:manipulation;min-height:36px;">Formed</button>
+          <button class="bm-type-btn" onclick="setBMType(this,'Loose')" style="padding:7px 14px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;touch-action:manipulation;min-height:36px;">Loose</button>
+          <button class="bm-type-btn" onclick="setBMType(this,'Watery')" style="padding:7px 14px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;touch-action:manipulation;min-height:36px;">Watery</button>
+          <button class="bm-type-btn" onclick="setBMType(this,'Hard/pellets')" style="padding:7px 14px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer;touch-action:manipulation;min-height:36px;">Hard</button>
+          <button class="bm-type-btn" onclick="setBMType(this,'Blood noted')" style="padding:7px 14px;border-radius:20px;background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.3);color:#e05555;font-size:12px;cursor:pointer;touch-action:manipulation;min-height:36px;">Blood noted ⚠</button>
+        </div>
+      </div>
+    </div>
     <div style="margin-bottom:10px;">
       <label class="form-label">Observations — anything to flag</label>
       <textarea class="form-textarea" id="cl-obs" placeholder="e.g. Client seemed more tired than usual..."></textarea>
@@ -1228,7 +1273,7 @@ a{color:inherit;text-decoration:none;}
     <div style="margin-bottom:14px;">
       <label class="form-label">Task Photos <span style="font-size:11px;color:var(--muted);font-weight:400;">(optional — up to 4)</span></label>
       <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
-        <input type="file" id="co-photos" accept="image/*" multiple style="display:none;" onchange="previewPhotos(this)" capture="environment">
+        <input type="file" id="co-photos" accept="image/*" multiple style="display:none;" onchange="previewPhotos(this)" accept="image/*,application/pdf,.heic,.heif">
         <button onclick="document.getElementById('co-photos').click()" style="font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted2);border-radius:6px;cursor:pointer;min-height:44px;touch-action:manipulation;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Add Photos</button>
         <div id="co-photo-preview" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       </div>
@@ -1494,8 +1539,8 @@ function checkGeofence(latitude, longitude, clientName) {
   const client = clients.find(c => (c.full_name || c.client_name) === clientName);
   if (!client || !client.latitude || !client.longitude) return null; // null = geofence not configured
   const dist = Math.round(haversineDistance(latitude, longitude, client.latitude, client.longitude));
-  if (dist > 500) {
-    showToast(`You're ${dist}m from ${clientName.split(' ')[0]}'s address`, 'warn');
+  if (dist > 1000) {
+    showToast(`${dist}m from ${clientName.split(' ')[0]}'s address — GPS may be off indoors`, 'warn');
     return false; // outside fence — warn but still allow (return value used for within_range flag)
   }
   return true;
@@ -1594,6 +1639,8 @@ function goToPin() {
   const name = document.getElementById('lock-name').value.trim();
   if (!name) { showToast('Enter your name first', 'err'); return; }
   pswName = name;
+  // Re-init biometric button now that pswName is known
+  setTimeout(initBiometricBtn, 100);
   document.getElementById('lock-pin-label').textContent = 'Hi ' + name.split(' ')[0] + ', enter your PIN';
   document.getElementById('lock-step-1').classList.remove('active');
   document.getElementById('lock-step-2').classList.add('active');
@@ -1644,6 +1691,8 @@ function unlockApp() {
   history.pushState(null, '', window.location.href);
   startPSWIdleTimer(); // PHIPA: 5-min lock, 60-min sign-out
   updateHomeLiveDate(); setInterval(updateHomeLiveDate, 60000); // live clock
+  // Restore checklist state so PSW doesn't lose progress after session expiry
+  try { restoreChecklist(); } catch {}
   document.getElementById('lock').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   const ini = pswName.split(' ').map(w => w[0]||'').join('').toUpperCase().slice(0,2);
@@ -1652,6 +1701,11 @@ function unlockApp() {
   // Show offline banner if already offline
   if (!navigator.onLine) updateOfflineBanner(true);
   fetchPSWEmail();
+  // Show loading state on stat cards while data fetches
+  ['s-today','s-month','s-hours','s-earnings'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = '...'; el.style.opacity = '.4'; }
+  });
   loadAll();
   restoreChecklist();
   initPullToRefresh(); // Build 4
@@ -2411,7 +2465,11 @@ async function doCheckOut() {
   const hasIncident = !!incidentData;
 
   // Build combined observations string — include refusal if present
-  let obsNotes = [obs, supplies].filter(Boolean).join(' | ') || null;
+  const bpData = getBPData();
+  const bmData = getBMData();
+  const bpStr = bpData ? `BP: ${bpData.systolic}/${bpData.diastolic}${bpData.abnormal ? ' [ABNORMAL]' : ''}` : '';
+  const bmStr = bmData ? `BM: ${bmData.count}x ${bmData.type}` : '';
+  let obsNotes = [obs, supplies, bpStr, bmStr].filter(Boolean).join(' | ') || null;
   if (hasRefusal) {
     const refusalStr = 'REFUSAL OF CARE: ' + refusalData.items.join(', ') + (refusalData.reason ? ' — Reason: ' + refusalData.reason : '') + ' (Ontario Standard: documented, alternatives offered)';
     obsNotes = [obsNotes, refusalStr].filter(Boolean).join(' | ');
@@ -2447,7 +2505,11 @@ async function doCheckOut() {
     await queueAction('checkout', `${API}/visit/checkout`, payload);
     closeCheckout();
     activeVisit = null;
-    stopElapsed(); resetChecklist(); updateShiftUI();
+    stopElapsed(); resetChecklist(); resetVitals(); updateShiftUI();
+    // Clear persisted vitals and checklist state after visit complete
+    try {
+      ['state','all','obs','sup','bp','bm'].forEach(k => localStorage.removeItem(_clKey(k)));
+    } catch {}
     haptic([100, 50, 100]); // Build 3
     document.getElementById('success-title').textContent = 'Visit Queued';
     document.getElementById('success-msg').textContent = 'No signal — visit will sync automatically when back online.';
@@ -2537,6 +2599,13 @@ function saveChecklist() {
     localStorage.setItem(_clKey('all'), JSON.stringify(allLabels));
     localStorage.setItem(_clKey('obs'), document.getElementById('cl-obs').value);
     localStorage.setItem(_clKey('sup'), document.getElementById('cl-supplies').value);
+    // Save vitals mid-shift so PSW doesn't lose them on idle lock
+    const bpSys = document.getElementById('cl-bp-systolic')?.value || '';
+    const bpDia = document.getElementById('cl-bp-diastolic')?.value || '';
+    if (bpSys || bpDia) localStorage.setItem(_clKey('bp'), JSON.stringify({sys:bpSys, dia:bpDia}));
+    if (typeof _bmCount !== 'undefined' && _bmCount > 0) {
+      localStorage.setItem(_clKey('bm'), JSON.stringify({count:_bmCount, type:_bmType||''}));
+    }
   } catch {}
 }
 function restoreChecklist() {
@@ -2575,6 +2644,32 @@ function restoreChecklist() {
     if (obs) document.getElementById('cl-obs').value = obs;
     if (sup) document.getElementById('cl-supplies').value = sup;
     updateClCount();
+    // Restore observations and supplies text
+    const savedObs = localStorage.getItem(_clKey('obs'));
+    const savedSup = localStorage.getItem(_clKey('sup'));
+    const obsEl = document.getElementById('cl-obs');
+    const supEl = document.getElementById('cl-supplies');
+    if (obsEl && savedObs) obsEl.value = savedObs;
+    if (supEl && savedSup) supEl.value = savedSup;
+    // Restore BP readings
+    const savedBP = JSON.parse(localStorage.getItem(_clKey('bp')) || 'null');
+    if (savedBP) {
+      const sysEl = document.getElementById('cl-bp-systolic');
+      const diaEl = document.getElementById('cl-bp-diastolic');
+      if (sysEl) sysEl.value = savedBP.sys || '';
+      if (diaEl) diaEl.value = savedBP.dia || '';
+      if (savedBP.sys || savedBP.dia) { try { getBPData(); } catch {} }
+    }
+    // Restore BM count + type
+    const savedBM = JSON.parse(localStorage.getItem(_clKey('bm')) || 'null');
+    if (savedBM && savedBM.count > 0) {
+      _bmCount = savedBM.count;
+      _bmType = savedBM.type || '';
+      const bmEl = document.getElementById('cl-bm-count');
+      if (bmEl) bmEl.textContent = _bmCount;
+      const typeRow = document.getElementById('cl-bm-type-row');
+      if (typeRow) typeRow.style.display = 'block';
+    }
   } catch {}
 }
 // S38 — Client-specific checklist injection
@@ -2658,6 +2753,103 @@ function openIncidentHistoryIfNeeded() {
     if (chevron) chevron.style.transform = 'rotate(180deg)';
   }
 }
+
+// ── BLOOD PRESSURE + BOWEL MOVEMENT HELPERS ──
+let _bmCount = 0;
+let _bmType = '';
+
+function adjustBM(delta) {
+  _bmCount = Math.max(0, Math.min(10, _bmCount + delta));
+  const el = document.getElementById('cl-bm-count');
+  if (el) el.textContent = _bmCount;
+  const typeRow = document.getElementById('cl-bm-type-row');
+  if (typeRow) typeRow.style.display = _bmCount > 0 ? 'block' : 'none';
+  if (_bmCount === 0) _bmType = '';
+}
+
+function setBMType(btn, type) {
+  _bmType = type;
+  document.querySelectorAll('.bm-type-btn').forEach(b => {
+    b.style.background = 'var(--bg3)';
+    b.style.color = 'var(--muted)';
+    b.style.borderColor = 'var(--border)';
+  });
+  btn.style.background = 'rgba(61,138,184,.15)';
+  btn.style.color = 'var(--teal2)';
+  btn.style.borderColor = 'rgba(61,138,184,.35)';
+}
+
+function getBPData() {
+  const sys = parseInt(document.getElementById('cl-bp-systolic')?.value || '0');
+  const dia = parseInt(document.getElementById('cl-bp-diastolic')?.value || '0');
+  if (!sys || !dia) return null;
+  // Flag abnormal BP
+  const flag = document.getElementById('cl-bp-flag');
+  const abnormal = sys > 160 || sys < 90 || dia > 100 || dia < 60;
+  if (flag) {
+    flag.style.display = abnormal ? 'block' : 'none';
+    flag.textContent = abnormal ? '⚠ Abnormal reading — ensure this is documented in your notes' : '';
+  }
+  return { systolic: sys, diastolic: dia, abnormal };
+}
+
+function getBMData() {
+  if (_bmCount === 0) return null;
+  return { count: _bmCount, type: _bmType || 'Not specified' };
+}
+
+// ── PIN FALLBACK — shown when biometric fails or user prefers PIN ──
+function showPinInstead() {
+  // Hide biometric button and fallback link, show PIN pad prominently
+  const bioBtn = document.getElementById('biometric-btn');
+  const fallback = document.getElementById('pin-fallback-link');
+  if (bioBtn) bioBtn.style.display = 'none';
+  if (fallback) fallback.style.display = 'none';
+  // Focus PIN pad label so PSW knows to tap numbers
+  const label = document.getElementById('lock-pin-label');
+  if (label) {
+    label.textContent = 'Enter your PIN';
+    label.style.color = 'var(--teal2)';
+    // Flash to draw attention
+    label.animate
+      ? label.animate([{opacity:0},{opacity:1}], {duration:300})
+      : null;
+  }
+  showToast('Enter your 4-digit PIN', 'info');
+}
+
+function showBiometricFallback() {
+  // After a biometric fail, show the "Use PIN instead" link
+  const bioBtn = document.getElementById('biometric-btn');
+  const fallback = document.getElementById('pin-fallback-link');
+  if (bioBtn && bioBtn.style.display !== 'none') {
+    if (fallback) fallback.style.display = 'block';
+  }
+}
+
+function resetVitals() {
+  _bmCount = 0; _bmType = '';
+  const bmEl = document.getElementById('cl-bm-count');
+  if (bmEl) bmEl.textContent = '0';
+  const typeRow = document.getElementById('cl-bm-type-row');
+  if (typeRow) typeRow.style.display = 'none';
+  document.querySelectorAll('.bm-type-btn').forEach(b => {
+    b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+  });
+  const sys = document.getElementById('cl-bp-systolic');
+  const dia = document.getElementById('cl-bp-diastolic');
+  if (sys) sys.value = '';
+  if (dia) dia.value = '';
+  const flag = document.getElementById('cl-bp-flag');
+  if (flag) flag.style.display = 'none';
+}
+
+// Wire BP input to live flag check
+document.addEventListener('input', function(e) {
+  if (e.target.id === 'cl-bp-systolic' || e.target.id === 'cl-bp-diastolic') {
+    getBPData();
+  }
+});
 
 function resetChecklist() {
   // Remove client-specific tasks injected on checkin
@@ -2952,6 +3144,11 @@ async function loadHomeData() {
     _homeDataReady = true;
     // Refresh home feed now that accurate data is available
     renderHomeFeed();
+    // Clear loading state on stat cards
+    ['s-today','s-month','s-hours','s-earnings'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.opacity = '';
+    });
     // Sync indicator update
     const _dot = document.getElementById('sync-dot');
     const _lbl = document.getElementById('sync-label');
@@ -4363,19 +4560,41 @@ function u8ToB64(u8) {
 
 // Show biometric button on step 2 if credential exists
 function initBiometricBtn() {
-  const credId = localStorage.getItem(WA_STORE + '_' + (pswName||''));
+  if (!waSupported()) return;
+  const nameKey = (pswName || '').trim().toLowerCase();
+  const credId = nameKey ? localStorage.getItem(WA_STORE + '_' + nameKey) : null;
   const btn = document.getElementById('biometric-btn');
-  if (btn && credId && waSupported()) {
+  if (!btn) return;
+  const fallback = document.getElementById('pin-fallback-link');
+  if (credId && location.protocol === 'https:') {
     btn.style.display = 'block';
-    // Update icon based on device capability
+    if (fallback) fallback.style.display = 'block'; // Always show PIN option alongside biometric
+    // Show Face ID or fingerprint icon based on device capability
     PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.()
-      .then(ok => { if (ok && btn) btn.querySelector('#biometric-icon').textContent = '⬡'; });
+      .then(ok => {
+        if (!btn) return;
+        const icon = btn.querySelector('#biometric-icon');
+        if (icon) icon.textContent = ok ? '⬡' : '🔑';
+        btn.title = ok ? 'Use Face ID or Fingerprint' : 'Use biometric';
+      }).catch(() => {});
+  } else {
+    btn.style.display = 'none';
+    if (fallback) fallback.style.display = 'none';
   }
 }
 
 async function tryBiometric() {
-  const credId = localStorage.getItem(WA_STORE + '_' + pswName);
-  if (!credId) return;
+  // WebAuthn requires HTTPS
+  if (location.protocol !== 'https:') {
+    showToast('Biometrics require HTTPS — use PIN', 'warn');
+    return;
+  }
+  const nameKey = (pswName || '').trim().toLowerCase();
+  const credId = localStorage.getItem(WA_STORE + '_' + nameKey);
+  if (!credId) {
+    showToast('No biometric registered — enter PIN first', 'warn');
+    return;
+  }
   try {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const assertion = await navigator.credentials.get({
@@ -4384,42 +4603,73 @@ async function tryBiometric() {
         rpId:              WA_RPID,
         allowCredentials:  [{ id: b64ToU8(credId), type: 'public-key' }],
         userVerification:  'required',
-        timeout:           30000
+        timeout:           60000
       }
     });
     if (assertion) {
-      // Biometric passed — unlock without network call
-      showToast('Biometric verified', 'ok');
+      showToast('Biometric verified ✓', 'ok');
       unlockApp();
     }
   } catch (e) {
-    if (e.name !== 'NotAllowedError') showToast('Biometric failed — use PIN', 'warn');
+    console.error('[WebAuthn] tryBiometric error:', e.name, e.message);
+    showBiometricFallback(); // Always show PIN fallback on any error
+    if (e.name === 'NotAllowedError') {
+      showToast('Biometric cancelled — tap Use PIN instead', 'warn');
+    } else if (e.name === 'SecurityError') {
+      showToast('Biometric error — tap Use PIN instead', 'err');
+      // Stale credential — clear it so PSW can re-register
+      localStorage.removeItem(WA_STORE + '_' + nameKey);
+      const btn = document.getElementById('biometric-btn');
+      if (btn) btn.style.display = 'none';
+    } else if (e.name === 'InvalidStateError') {
+      showToast('Biometric not recognised — tap Use PIN instead', 'warn');
+    } else {
+      showToast('Biometric failed — tap Use PIN instead', 'warn');
+    }
   }
 }
 
 async function registerBiometric() {
   if (!waSupported() || !pswName) return;
+  if (location.protocol !== 'https:') {
+    showToast('Biometrics require HTTPS connection', 'warn');
+    return;
+  }
+  const nameKey = (pswName || '').trim().toLowerCase();
   try {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const userId    = new TextEncoder().encode(pswName);
+    const userId    = new TextEncoder().encode(nameKey);
     const cred = await navigator.credentials.create({
       publicKey: {
         challenge,
         rp:   { name: WA_RPNAME, id: WA_RPID },
-        user: { id: userId, name: pswName, displayName: pswName },
+        user: { id: userId, name: nameKey, displayName: pswName },
         pubKeyCredParams:  [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
-        timeout: 30000,
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required',
+          residentKey: 'preferred'
+        },
+        timeout: 60000,
         attestation: 'none'
       }
     });
     if (cred) {
-      localStorage.setItem(WA_STORE + '_' + pswName, u8ToB64(new Uint8Array(cred.rawId)));
-      showToast('Biometric registered — tap to unlock next time', 'ok');
+      localStorage.setItem(WA_STORE + '_' + nameKey, u8ToB64(new Uint8Array(cred.rawId)));
+      showToast('Face ID / Fingerprint enabled ✓ — tap to unlock next time', 'ok');
       initBiometricBtn();
     }
   } catch (e) {
-    if (e.name !== 'NotAllowedError') console.warn('WebAuthn register failed:', e.message);
+    console.error('[WebAuthn] register error:', e.name, e.message);
+    if (e.name === 'NotAllowedError') {
+      showToast('Registration cancelled — you can enable it later', 'warn');
+    } else if (e.name === 'InvalidStateError') {
+      showToast('Already registered on this device', 'warn');
+    } else if (e.name === 'NotSupportedError') {
+      showToast('This device does not support biometrics', 'warn');
+    } else {
+      showToast('Could not register biometric — try again', 'err');
+    }
   }
 }
 
