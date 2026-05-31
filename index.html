@@ -1847,20 +1847,7 @@ function renderHomeFeed() {
     });
   }
 
-  // ── Active visit ──────────────────────────────────────────────
-  if (activeVisit) {
-    const tin = activeVisit.time_in || (activeVisit.checkin_time||'').slice(11,16) || '—';
-    rows.push(`<div class="feed-row">
-      <div class="feed-dot active"></div>
-      <div class="feed-body"><div class="feed-client">${activeVisit.client_name||'—'}</div><div class="feed-meta">In progress · Started ${tin}</div></div>
-      <div class="feed-right">
-        <div class="feed-hrs" id="feed-elapsed" style="color:var(--amber);">— elapsed</div>
-        <button onclick="openCheckout()" style="font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);background:rgba(224,154,61,.1);border:1px solid rgba(224,154,61,.3);border-radius:4px;padding:4px 8px;cursor:pointer;margin-top:4px;touch-action:manipulation;">Check Out</button>
-      </div>
-    </div>`);
-  }
-
-  // ── ALL upcoming bookings — group by day ──────────────────────
+  // ── Upcoming bookings (today + future) ────────────────────────
   // Sort by date+time so today comes first, future days follow in order
   const upcomingBookings = bookings
     .filter(b => b.scheduled_date >= today && b.status !== 'cancelled' && !b.deleted_at)
@@ -1870,90 +1857,155 @@ function renderHomeFeed() {
       return da.localeCompare(db);
     });
 
-  // Group by date
-  const byDate = {};
-  upcomingBookings.forEach(b => {
-    const d = b.scheduled_date || today;
-    if (!byDate[d]) byDate[d] = [];
-    byDate[d].push(b);
+  // Completed-visit matcher — link a completed visit to a SPECIFIC booking so two
+  // same-client bookings on one day don't both show Done off a single visit.
+  // 1) exact v.booking_id ↔ b.id link; 2) fall back to client_name + time proximity
+  // (scheduled_time within 2h of visit time_in), never client_name alone.
+  // Each completed visit is consumed at most once.
+  const _usedVisitIdx = new Set();
+  const _toMin = t => { const m = String(t||'').match(/(\d{1,2}):(\d{2})/); return m ? (+m[1])*60 + (+m[2]) : null; };
+  const _within2h = (schedTime, visitTime) => {
+    const a = _toMin(schedTime), z = _toMin(visitTime);
+    return a != null && z != null && Math.abs(a - z) <= 120;
+  };
+  function matchCompletedVisit(b) {
+    let idx = -1;
+    // 1) exact booking_id link
+    allVisits.forEach((v, i) => {
+      if (idx >= 0 || _usedVisitIdx.has(i)) return;
+      if (v.visit_date !== b.scheduled_date || v.status !== 'completed') return;
+      if (v.booking_id && b.id && v.booking_id === b.id) idx = i;
+    });
+    // 2) client_name + time proximity (within 2h) — never name alone
+    if (idx < 0) {
+      allVisits.forEach((v, i) => {
+        if (idx >= 0 || _usedVisitIdx.has(i)) return;
+        if (v.visit_date !== b.scheduled_date || v.status !== 'completed') return;
+        if (v.client_name === b.client_name && _within2h(b.scheduled_time, v.time_in)) idx = i;
+      });
+    }
+    if (idx >= 0) { _usedVisitIdx.add(idx); return allVisits[idx]; }
+    return null;
+  }
+
+  // Status badge pill
+  const _badge = (label, kind) => {
+    const c = kind === 'active' ? ['rgba(224,154,61,.14)','var(--amber)','rgba(224,154,61,.35)']
+            : kind === 'done'   ? ['rgba(90,170,122,.14)','var(--green2)','rgba(90,170,122,.35)']
+            :                     ['rgba(61,138,122,.14)','var(--teal2)','rgba(61,138,122,.35)'];
+    return `<span style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:100px;background:${c[0]};color:${c[1]};border:1px solid ${c[2]};white-space:nowrap;">${label}</span>`;
+  };
+
+  // ── TODAY — AlayaCare-style client card grid ──────────────────
+  const todayBookings = upcomingBookings.filter(b => b.scheduled_date === today);
+  if (todayBookings.length || activeVisit) {
+    rows.push(`<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:10px 0 8px;">Today</div>`);
+    const cards = [];
+    let activeShown = false;
+
+    todayBookings.forEach(b => {
+      const _safeName = (b.client_name||'').replace(/'/g,'').replace(/"/g,'');
+      const _safeId = b.id || '';
+      const time = b.scheduled_time || 'TBD';
+      const dur = b.duration_minutes ? (b.duration_minutes/60).toFixed(1)+'h' : '';
+      const metaTime = `${time}${dur?' · '+dur:''}`;
+      const isActive = activeVisit && activeVisit.client_name === b.client_name;
+
+      if (isActive) {
+        activeShown = true;
+        const tin = activeVisit.time_in || (activeVisit.checkin_time||'').slice(11,16) || time;
+        cards.push(`<div onclick="openCheckout()" style="background:var(--bg2);border:1px solid rgba(224,154,61,.4);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;touch-action:manipulation;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+            <div style="font-weight:600;font-size:14px;color:var(--text);line-height:1.2;">${b.client_name||'—'}</div>${_badge('Active','active')}
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted2);">In progress · Started ${tin}</div>
+          <div id="feed-elapsed" style="font-family:var(--mono);font-size:11px;color:var(--amber);">— elapsed</div>
+          <button onclick="event.stopPropagation();openCheckout()" style="width:100%;font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600;color:var(--amber);background:rgba(224,154,61,.1);border:1px solid rgba(224,154,61,.35);border-radius:8px;padding:9px;cursor:pointer;touch-action:manipulation;min-height:38px;">Check Out</button>
+        </div>`);
+        return;
+      }
+
+      const completedVisit = matchCompletedVisit(b);
+      if (completedVisit) {
+        const hrs = parseFloat(completedVisit.hours_worked||0).toFixed(1);
+        cards.push(`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;opacity:.85;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+            <div style="font-weight:600;font-size:14px;color:var(--text);line-height:1.2;">${b.client_name||'—'}</div>${_badge('Done','done')}
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted2);">${metaTime}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--green2);">${completedVisit.time_in||'—'} – ${completedVisit.time_out||'—'} · ${hrs}h ✓</div>
+        </div>`);
+        return;
+      }
+
+      // Upcoming
+      if (activeVisit) {
+        // Blocked until the active visit ends
+        cards.push(`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;opacity:.6;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+            <div style="font-weight:600;font-size:14px;color:var(--text);line-height:1.2;">${b.client_name||'—'}</div>${_badge('Upcoming','upcoming')}
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted2);">${metaTime}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">⏳ Finish active visit first</div>
+        </div>`);
+      } else {
+        cards.push(`<div onclick="doCheckInFromShift('${_safeName}')" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;touch-action:manipulation;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+            <div style="font-weight:600;font-size:14px;color:var(--text);line-height:1.2;">${b.client_name||'—'}</div>${_badge('Upcoming','upcoming')}
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted2);">${metaTime}</div>
+          <div style="display:flex;gap:6px;margin-top:2px;">
+            <button onclick="event.stopPropagation();openNavigateSheet('${_safeName}','${_safeId}')" style="flex:0 0 auto;font-family:var(--mono);font-size:12px;color:var(--teal2);background:rgba(61,138,122,.08);border:1px solid rgba(61,138,122,.25);border-radius:8px;padding:8px 10px;cursor:pointer;touch-action:manipulation;min-height:38px;">🗺</button>
+            <button onclick="event.stopPropagation();doCheckInFromShift('${_safeName}')" style="flex:1;font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600;color:#fff;background:var(--teal);border:none;border-radius:8px;padding:9px;cursor:pointer;touch-action:manipulation;min-height:38px;">Sign In</button>
+          </div>
+        </div>`);
+      }
+    });
+
+    // Active visit with no matching today booking → standalone card
+    if (activeVisit && !activeShown) {
+      const tin = activeVisit.time_in || (activeVisit.checkin_time||'').slice(11,16) || '—';
+      cards.unshift(`<div onclick="openCheckout()" style="background:var(--bg2);border:1px solid rgba(224,154,61,.4);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;touch-action:manipulation;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+          <div style="font-weight:600;font-size:14px;color:var(--text);line-height:1.2;">${activeVisit.client_name||'—'}</div>${_badge('Active','active')}
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted2);">In progress · Started ${tin}</div>
+        <div id="feed-elapsed" style="font-family:var(--mono);font-size:11px;color:var(--amber);">— elapsed</div>
+        <button onclick="event.stopPropagation();openCheckout()" style="width:100%;font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600;color:var(--amber);background:rgba(224,154,61,.1);border:1px solid rgba(224,154,61,.35);border-radius:8px;padding:9px;cursor:pointer;touch-action:manipulation;min-height:38px;">Check Out</button>
+      </div>`);
+    }
+
+    if (cards.length) {
+      rows.push(`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:4px;">${cards.join('')}</div>`);
+    }
+  }
+
+  // ── FUTURE days — grouped list ────────────────────────────────
+  const futureByDate = {};
+  upcomingBookings.filter(b => b.scheduled_date > today).forEach(b => {
+    const d = b.scheduled_date;
+    if (!futureByDate[d]) futureByDate[d] = [];
+    futureByDate[d].push(b);
   });
 
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  Object.keys(byDate).sort().forEach(dateStr => {
-    const dayBookings = byDate[dateStr];
-    const isToday = dateStr === today;
-
-    // Day header
+  Object.keys(futureByDate).sort().forEach(dateStr => {
     const dt = new Date(dateStr + 'T12:00:00');
-    const dayLabel = isToday ? 'Today' : dayNames[dt.getDay()] + ' · ' + monthNames[dt.getMonth()] + ' ' + dt.getDate();
+    const dayLabel = dayNames[dt.getDay()] + ' · ' + monthNames[dt.getMonth()] + ' ' + dt.getDate();
     rows.push(`<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px;">${dayLabel}</div>`);
-
-    dayBookings.forEach(b => {
-      // Check status using booking_id match (not just client name — avoids hiding same-client visits)
-      const completedVisit = allVisits.find(v =>
-        v.visit_date === b.scheduled_date &&
-        v.client_name === b.client_name &&
-        v.status === 'completed' &&
-        (!b.booking_id || v.booking_id === b.id || !v.booking_id)
-      );
-      const isActive = activeVisit && activeVisit.client_name === b.client_name && b.scheduled_date === today;
-
-      if (isActive) return; // Already shown in active visit banner above
-
+    futureByDate[dateStr].forEach(b => {
       const _safeName = (b.client_name||'').replace(/'/g,'').replace(/"/g,'');
       const _safeId = b.id || '';
-
-      if (completedVisit) {
-        // Show as done — still visible so PSW can see their full day
-        const hrs = parseFloat(completedVisit.hours_worked||0).toFixed(1);
-        rows.push(`<div class="feed-row">
-          <div class="feed-dot done"></div>
-          <div class="feed-body"><div class="feed-client">${b.client_name||'—'}</div><div class="feed-meta">${completedVisit.time_in||'—'} – ${completedVisit.time_out||'—'} · Done</div></div>
-          <div class="feed-right"><div class="feed-hrs">${hrs}h</div><div class="feed-time" style="color:var(--green2);font-size:11px;">✓</div></div>
-        </div>`);
-        return;
-      }
-
-      // Upcoming — show handoff from last visit with this client
-      const lastVisit = allVisits.filter(v => v.client_name === b.client_name && v.visit_date < dateStr)
-        .sort((a,z) => (z.visit_date||'').localeCompare(a.visit_date||''))[0];
-      const handoff = lastVisit
-        ? `<div style="margin-top:6px;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--muted2);line-height:1.5;">
-            <span style="color:var(--teal2);font-family:var(--mono);font-size:11px;">Last visit ${fmtd(lastVisit.visit_date)}</span>
-            ${lastVisit.client_mood ? ` · Mood: ${lastVisit.client_mood}` : ''}
-            ${lastVisit.visit_summary ? `<br>${lastVisit.visit_summary.slice(0,80)}${lastVisit.visit_summary.length>80?'…':''}` : ''}
-          </div>`
-        : '';
-
-      if (isToday && !activeVisit) {
-        // Today + no active visit → tappable sign-in
-        rows.push(`<div class="feed-row" onclick="doCheckInFromShift('${_safeName}')" style="cursor:pointer;">
-          <div class="feed-dot upcoming"></div>
-          <div class="feed-body"><div class="feed-client">${b.client_name||'—'}</div><div class="feed-meta">Upcoming · ${b.scheduled_time||'TBD'}${b.duration_minutes?' · '+(b.duration_minutes/60).toFixed(1)+'h':''}</div>${handoff}</div>
-          <div class="feed-right">
-            <button onclick="event.stopPropagation();openNavigateSheet('${_safeName}','${_safeId}')" style="font-family:var(--mono);font-size:10px;color:var(--teal2);background:rgba(61,138,122,.08);border:1px solid rgba(61,138,122,.25);border-radius:4px;padding:3px 7px;cursor:pointer;margin-bottom:4px;display:block;touch-action:manipulation;">🗺 Map</button>
-            <div style="color:var(--teal2);font-weight:600;font-family:var(--mono);font-size:11px;">Sign In →</div>
-          </div>
-        </div>`);
-      } else if (isToday && activeVisit) {
-        // Today but blocked by active visit
-        rows.push(`<div class="feed-row" style="opacity:0.6;">
-          <div class="feed-dot upcoming"></div>
-          <div class="feed-body"><div class="feed-client">${b.client_name||'—'}</div><div class="feed-meta">Upcoming · ${b.scheduled_time||'TBD'} · Finish active visit first</div></div>
-          <div class="feed-right"><div class="feed-time" style="color:var(--muted);font-size:11px;">⏳ Waiting</div></div>
-        </div>`);
-      } else {
-        // Future day — show with map button
-        rows.push(`<div class="feed-row">
-          <div class="feed-dot" style="background:var(--border2);"></div>
-          <div class="feed-body"><div class="feed-client">${b.client_name||'—'}</div><div class="feed-meta">${b.scheduled_time||'TBD'}${b.duration_minutes?' · '+(b.duration_minutes/60).toFixed(1)+'h':''}</div></div>
-          <div class="feed-right">
-            <button onclick="openNavigateSheet('${_safeName}','${_safeId}')" style="font-family:var(--mono);font-size:10px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;touch-action:manipulation;">🗺 Map</button>
-          </div>
-        </div>`);
-      }
+      const dur = b.duration_minutes ? ' · '+(b.duration_minutes/60).toFixed(1)+'h' : '';
+      rows.push(`<div class="feed-row">
+        <div class="feed-dot" style="background:var(--border2);"></div>
+        <div class="feed-body"><div class="feed-client">${b.client_name||'—'}</div><div class="feed-meta">${b.scheduled_time||'TBD'}${dur}</div></div>
+        <div class="feed-right">
+          <button onclick="openNavigateSheet('${_safeName}','${_safeId}')" style="font-family:var(--mono);font-size:10px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;touch-action:manipulation;">🗺 Map</button>
+        </div>
+      </div>`);
     });
   });
 
