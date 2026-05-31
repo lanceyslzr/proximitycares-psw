@@ -2761,7 +2761,7 @@ function injectClientChecklistTasks(clientName) {
     if (!routine || routine.trim().length < 3) return;
 
     // Parse routine into tasks — ALWAYS string split '\n', NEVER a regex literal (raw newline in regex kills the script block)
-    const lines = routine.split('\n').map(l => l.replace(/^[-•*\d.]+\s*/, '').trim()).filter(l => l.length > 2 && l.length < 120);
+    const lines = routine.split('\n').flatMap(l => l.split(/(?<=\.)\s+(?=[A-Z])/)).map(l => l.replace(/^[-•*\d.]+\s*/, '').trim()).filter(l => l.length > 2 && l.length < 120);
     if (!lines.length) return;
 
     // Build section header + task items
