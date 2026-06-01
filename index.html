@@ -965,6 +965,35 @@ a{color:inherit;text-decoration:none;}
       >
       <button onclick="addCustomTask()" style="padding:10px 16px;background:rgba(61,138,122,.1);border:1px solid rgba(61,138,122,.3);border-radius:8px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--teal2);cursor:pointer;min-height:44px;touch-action:manipulation;white-space:nowrap;">+ Add</button>
     </div>
+    <div class="cl-section-title">Vitals &amp; Blood Pressure</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div>
+        <label class="form-label" style="font-size:11px;">Blood Pressure (Sys/Dia)</label>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <input type="number" id="cl-bp-sys" class="sinput" placeholder="120" min="60" max="250" style="font-size:16px;padding:10px;text-align:center;" oninput="saveBPVitals()">
+          <span style="font-family:var(--mono);color:var(--muted);font-size:14px;">/</span>
+          <input type="number" id="cl-bp-dia" class="sinput" placeholder="80" min="40" max="150" style="font-size:16px;padding:10px;text-align:center;" oninput="saveBPVitals()">
+        </div>
+      </div>
+      <div>
+        <label class="form-label" style="font-size:11px;">Pulse (bpm)</label>
+        <input type="number" id="cl-pulse" class="sinput" placeholder="72" min="30" max="220" style="font-size:16px;padding:10px;text-align:center;" oninput="saveBPVitals()">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:11px;">Temperature (°C)</label>
+        <input type="number" id="cl-temp" class="sinput" placeholder="36.6" step="0.1" min="34" max="42" style="font-size:16px;padding:10px;text-align:center;" oninput="saveBPVitals()">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:11px;">O₂ Saturation (%)</label>
+        <input type="number" id="cl-o2" class="sinput" placeholder="98" min="50" max="100" style="font-size:16px;padding:10px;text-align:center;" oninput="saveBPVitals()">
+      </div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <label class="form-label" style="font-size:11px;">Blood Sugar (mmol/L) — optional</label>
+      <input type="number" id="cl-glucose" class="sinput" placeholder="5.5" step="0.1" min="1" max="30" style="font-size:16px;padding:10px;" oninput="saveBPVitals()">
+    </div>
+    <div id="cl-bp-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;min-height:18px;"></div>
+
     <div class="cl-section-title">Observations &amp; Supplies</div>
     <div style="margin-bottom:10px;">
       <label class="form-label">Observations — anything to flag</label>
@@ -1000,9 +1029,12 @@ a{color:inherit;text-decoration:none;}
   </div>
   <!-- Incident history — read-only, only shows if PSW has incident records -->
   <div id="psw-incident-history" style="display:none;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
-    <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <div onclick="toggleIncidentHistory()" style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;touch-action:manipulation;">
       <span style="font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">Incident Records</span>
-      <span id="psw-incident-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="psw-incident-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></span>
+        <span id="psw-incident-toggle" style="font-family:var(--mono);font-size:14px;color:var(--muted);">▲</span>
+      </div>
     </div>
     <div id="psw-incident-list" style="padding:0 14px;"></div>
   </div>
@@ -1217,8 +1249,8 @@ a{color:inherit;text-decoration:none;}
     <div style="margin-bottom:14px;">
       <label class="form-label">Task Photos <span style="font-size:11px;color:var(--muted);font-weight:400;">(optional — up to 4)</span></label>
       <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
-        <input type="file" id="co-photos" accept="image/*" multiple style="display:none;" onchange="previewPhotos(this)" capture="environment">
-        <button onclick="document.getElementById('co-photos').click()" style="font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted2);border-radius:6px;cursor:pointer;min-height:44px;touch-action:manipulation;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Add Photos</button>
+        <input type="file" id="co-photos" accept="image/*,application/pdf" multiple style="display:none;" onchange="previewPhotos(this)">
+        <button onclick="document.getElementById('co-photos').click()" style="font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:8px 14px;border:1px solid var(--border2);background:var(--bg3);color:var(--muted2);border-radius:6px;cursor:pointer;min-height:44px;touch-action:manipulation;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Add Photos / Files</button>
         <div id="co-photo-preview" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       </div>
     </div>
@@ -1477,15 +1509,19 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 function checkGeofence(latitude, longitude, clientName) {
-  if (!latitude || !longitude || !scheduleData) return true;
+  if (!latitude || !longitude || !scheduleData) return null;
   // Find client address coords from scheduleData
   const clients = scheduleData.clients || scheduleData.assigned_clients || [];
-  const client = clients.find(c => (c.full_name || c.client_name) === clientName);
-  if (!client || !client.latitude || !client.longitude) return null; // null = geofence not configured
-  const dist = Math.round(haversineDistance(latitude, longitude, client.latitude, client.longitude));
+  const client = clients.find(c => (c.full_name || c.client_name) === clientName ||
+    ((c.first_name||'')+' '+(c.last_name||'')).trim() === clientName);
+  // Support both lat/lng (server field names) and latitude/longitude
+  const cLat = client?.lat || client?.latitude;
+  const cLng = client?.lng || client?.longitude;
+  if (!client || !cLat || !cLng) return null; // null = geofence not configured — do NOT warn
+  const dist = Math.round(haversineDistance(latitude, longitude, parseFloat(cLat), parseFloat(cLng)));
   if (dist > 500) {
     showToast(`You're ${dist}m from ${clientName.split(' ')[0]}'s address`, 'warn');
-    return false; // outside fence — warn but still allow (return value used for within_range flag)
+    return false; // outside fence — warn but still allow
   }
   return true;
 }
@@ -1641,13 +1677,17 @@ function unlockApp() {
   if (!navigator.onLine) updateOfflineBanner(true);
   fetchPSWEmail();
   loadAll();
-  restoreChecklist();
+  restoreChecklist(); // initial restore with global key (best-effort before visit loads)
+  setTimeout(restoreChecklistState, 2000); // restore after loadSchedule brings back active visit
+  // Deferred restore: once active visit is known, re-run with the correct visit-keyed localStorage
+  setTimeout(() => { if (activeVisit?.id) restoreChecklist(); }, 3500);
   initPullToRefresh(); // Build 4
   startIdleTimer();    // Build 6
-  // Delegated Sign In listener for schedule tab shift cards (data-checkin — never inline onclick)
+  // Delegated Sign In listener — sched-day-cards replaces old schedule-days
   if (!window._schedListenerSet) {
     window._schedListenerSet = true;
-    document.getElementById('schedule-days').addEventListener('click', function(e) {
+    const schedEl = document.getElementById('sched-day-cards');
+    if (schedEl) schedEl.addEventListener('click', function(e) {
       const btn = e.target.closest('.sched-signin-btn');
       if (!btn) return;
       const clientName = btn.dataset.checkin;
@@ -1867,14 +1907,13 @@ function renderHomeFeed() {
     const dayLabel = isToday ? 'Today' : dayNames[dt.getDay()] + ' · ' + monthNames[dt.getMonth()] + ' ' + dt.getDate();
     rows.push(`<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px;">${dayLabel}</div>`);
 
-    dayBookings.forEach(b => {
-      // Check status using booking_id match (not just client name — avoids hiding same-client visits)
-      const completedVisit = allVisits.find(v =>
-        v.visit_date === b.scheduled_date &&
-        v.client_name === b.client_name &&
-        v.status === 'completed' &&
-        (!b.booking_id || v.booking_id === b.id || !v.booking_id)
-      );
+    // Sort day bookings by time so consumed-visit set is applied in chronological order
+    const dayBookingsSorted = [...dayBookings].sort((a,z) => _timeToMins(a.scheduled_time) - _timeToMins(z.scheduled_time));
+    const _consumedVisitIds = new Set(); // each completed visit claimed by at most one booking
+
+    dayBookingsSorted.forEach(b => {
+      // Find matching completed visit using consumed-set (no double-claiming)
+      const completedVisit = matchVisitToBooking(b, allVisits, _consumedVisitIds);
       const isActive = activeVisit && activeVisit.client_name === b.client_name && b.scheduled_date === today;
 
       if (isActive) return; // Already shown in active visit banner above
@@ -1922,7 +1961,7 @@ function renderHomeFeed() {
           <div class="feed-right"><div class="feed-time" style="color:var(--muted);font-size:11px;">⏳ Waiting</div></div>
         </div>`);
       } else {
-        // Future day — show with address + care notes + map button
+        // Future day — show with address + care notes + map button — tappable for care plan popup
         const clientObj = (scheduleData?.clients || scheduleData?.assigned_clients || window._pswClients || []).find(c => {
           const full = ((c.first_name||'')+' '+(c.last_name||'')).trim();
           return full.toLowerCase() === (b.client_name||'').toLowerCase() ||
@@ -1930,7 +1969,7 @@ function renderHomeFeed() {
         });
         const addr = clientObj?.address || '';
         const notes = clientObj?.care_notes || '';
-        rows.push(`<div class="feed-row">
+        rows.push(`<div class="feed-row" onclick="openClientCarePopup('${_safeName}')" style="cursor:pointer;">
           <div class="feed-dot" style="background:var(--border2);"></div>
           <div class="feed-body">
             <div class="feed-client">${b.client_name||'—'}</div>
@@ -1939,7 +1978,8 @@ function renderHomeFeed() {
             ${notes ? `<div style="font-size:11px;color:var(--muted2);margin-top:4px;line-height:1.5;">${notes.slice(0,100)}${notes.length>100?'…':''}</div>` : ''}
           </div>
           <div class="feed-right">
-            <button onclick="openNavigateSheet('${_safeName}','${_safeId}')" style="font-family:var(--mono);font-size:10px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;touch-action:manipulation;">🗺 Map</button>
+            <button onclick="event.stopPropagation();openNavigateSheet('${_safeName}','${_safeId}')" style="font-family:var(--mono);font-size:10px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;touch-action:manipulation;">🗺 Map</button>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">Tap for care plan</div>
           </div>
         </div>`);
       }
@@ -2002,7 +2042,7 @@ function renderWeek() {
   const wl = document.getElementById('sched-week-range');
   if (wl) {
     const fmt = ds => { const d = new Date(ds+'T12:00:00'); return d.toLocaleDateString('en-CA',{month:'short',day:'numeric'}); };
-    wl.textContent = fmt(days[0]) + ' â ' + fmt(days[6]);
+    wl.textContent = fmt(days[0]) + ' - ' + fmt(days[6]);
   }
 
   if (!_selectedSchedDay || !days.includes(_selectedSchedDay)) {
@@ -2052,7 +2092,7 @@ function renderSchedDayCards(ds, days, bookings, visits, clients, today) {
   const d = new Date(ds+'T12:00:00');
   const isToday = ds === today;
   const dayFull = d.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'});
-  if (lbl) lbl.textContent = isToday ? 'Today â ' + dayFull : dayFull;
+  if (lbl) lbl.textContent = isToday ? 'Today - ' + dayFull : dayFull;
 
   const dayBookings = bookings.filter(b => b.scheduled_date === ds).sort((a,b) => (a.scheduled_time||'').localeCompare(b.scheduled_time||''));
   const dayVisits   = visits.filter(v => v.visit_date === ds);
@@ -2065,7 +2105,11 @@ function renderSchedDayCards(ds, days, bookings, visits, clients, today) {
     return;
   }
 
-  el.innerHTML = dayBookings.map(b => {
+  el.innerHTML = (() => {
+    // Build done set: position-based — first N bookings done where N = # completed visits for that client
+    const _dayDoneSet = buildDoneSet(dayBookings, dayVisits);
+
+    return dayBookings.map(b => {
     const client = clients.find(c => {
       const full = ((c.first_name||'')+' '+(c.last_name||'')).trim();
       return full.toLowerCase() === (b.client_name||'').toLowerCase() ||
@@ -2073,7 +2117,7 @@ function renderSchedDayCards(ds, days, bookings, visits, clients, today) {
     });
     const address   = client?.address || '';
     const careNotes = client?.care_notes || '';
-    const done = dayVisits.some(v => v.client_name === b.client_name);
+    const done = _dayDoneSet.has(b.id); // position-based: only true for the Nth booking if N visits done
     const isActive = activeVisit && activeVisit.client_name === b.client_name && isToday;
     const durH = b.duration_minutes ? (b.duration_minutes/60).toFixed(1) : null;
     const endTime = (b.scheduled_time && b.duration_minutes) ? (() => {
@@ -2081,38 +2125,102 @@ function renderSchedDayCards(ds, days, bookings, visits, clients, today) {
       const endMins = hh*60 + mm + b.duration_minutes;
       return String(Math.floor(endMins/60)%24).padStart(2,'0')+':'+String(endMins%60).padStart(2,'0');
     })() : null;
-    const timeStr = b.scheduled_time ? (endTime ? b.scheduled_time+' â '+endTime : b.scheduled_time) : 'TBD';
+    const timeStr = b.scheduled_time ? (endTime ? b.scheduled_time+' - '+endTime : b.scheduled_time) : 'TBD';
     const _safe = (b.client_name||'').replace(/'/g,'').replace(/"/g,'');
     return '<div style="background:var(--bg2);border:1px solid ' + (isActive ? 'rgba(224,154,61,.4)' : 'var(--border)') + ';border-radius:12px;padding:14px;margin-bottom:8px;' + (done ? 'opacity:0.65;' : '') + '">' +
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:2px;">' + (b.client_name||'—') + '</div>' +
+          '<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:2px;cursor:pointer;" onclick="openClientSheetByName(\'' + _safe + '\')">' + (b.client_name||'—') + ' <span style="font-family:var(--mono);font-size:11px;color:var(--teal2);">Info ›</span></div>' +
           '<div style="font-family:var(--mono);font-size:12px;color:' + (isActive ? 'var(--amber)' : done ? 'var(--green2)' : 'var(--teal2)') + ';"><span>' +
-            (isActive ? 'â In progress' : done ? 'â Done' : timeStr) + (durH && !done && !isActive ? ' Â· '+durH+'h' : '') +
+            (isActive ? '* In progress' : done ? ' Done' : timeStr) + (durH && !done && !isActive ? ' · '+durH+'h' : '') +
           '</span></div></div>' +
         '<div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);margin-left:8px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;">$</div>' +
       '</div>' +
-      (address ? '<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;font-family:var(--mono);font-size:11px;color:var(--muted2);">âð ' + address + '</div>' : '') +
-      (careNotes ? '<div style="font-size:11px;color:var(--muted2);line-height:1.55;margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);">' + careNotes.slice(0,160) + (careNotes.length>160 ? 'â¦' : '') + '</div>' : '') +
+      (address ? '<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;font-family:var(--mono);font-size:11px;color:var(--muted2);"> ' + address + '</div>' : '') +
+      (careNotes ? '<div style="font-size:11px;color:var(--muted2);line-height:1.55;margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);">' + careNotes.slice(0,160) + (careNotes.length>160 ? '...' : '') + '</div>' : '') +
       (!done && !isActive && isToday ?
         '<div style="display:flex;gap:8px;margin-top:4px;">' +
           '<button onclick="doCheckInFromShift(\''+_safe+'\')" style="flex:1;padding:11px;background:var(--teal);border:none;border-radius:8px;font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#fff;cursor:pointer;min-height:44px;touch-action:manipulation;">Sign In</button>' +
-          '<button onclick="openNavigateSheet(\''+_safe+'\',\'' + (b.id||'') + '\')" style="padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--muted2);cursor:pointer;min-height:44px;touch-action:manipulation;">🗺</button>' +
+          '<button onclick="openNavigateSheet(\''+_safe+'\',\'' + (b.id||'') + '\')" style="padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--muted2);cursor:pointer;min-height:44px;touch-action:manipulation;">Map</button>' +
           '<button onclick="openCancelShift(\'' + (b.id||'') + '\',\''+_safe+'\',\'' + b.scheduled_date + '\',\'' + (b.scheduled_time||'') + '\')" style="padding:11px 14px;background:rgba(224,154,61,.06);border:1px solid rgba(224,154,61,.25);border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--amber);cursor:pointer;min-height:44px;touch-action:manipulation;">Can\'t Make</button>' +
         '</div>' : '') +
       (!done && !isActive && !isToday ?
         '<div style="display:flex;gap:8px;margin-top:4px;">' +
-          '<button onclick="openNavigateSheet(\''+_safe+'\',\'' + (b.id||'') + '\')" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--muted2);cursor:pointer;min-height:44px;touch-action:manipulation;">🗺 Map</button>' +
+          '<button onclick="openNavigateSheet(\''+_safe+'\',\'' + (b.id||'') + '\')" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--muted2);cursor:pointer;min-height:44px;touch-action:manipulation;">Map Map</button>' +
           '<button onclick="openCancelShift(\'' + (b.id||'') + '\',\''+_safe+'\',\'' + b.scheduled_date + '\',\'' + (b.scheduled_time||'') + '\')" style="flex:1;padding:10px;background:rgba(224,154,61,.06);border:1px solid rgba(224,154,61,.25);border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--amber);cursor:pointer;min-height:44px;touch-action:manipulation;">Can\'t Make</button>' +
         '</div>' : '') +
       '</div>';
   }).join('');
+  })(); // close IIFE for _dayDoneSet scope
 }
 
 function shiftWeek(dir) { weekOffset += dir; _selectedSchedDay = null; renderWeek(); }
 // ── END SCHEDULE STRIP ────────────────────────────────────────────────────────
 
 // ── BUILD 7: AVAILABLE SHIFTS ──
+// ── BOOKING DONE UTILITIES ───────────────────────────────────────────────────
+// Core problem: same client multiple visits per day — one completion was
+// marking ALL same-client bookings as done. Fix: position-based matching.
+
+function _timeToMins(str) {
+  if (!str) return 0;
+  const p = (str || '').split(':');
+  return parseInt(p[0]||0, 10) * 60 + parseInt(p[1]||0, 10);
+}
+
+// Returns a Set of booking IDs that are definitively done.
+// Algorithm: for each client, sort their bookings by time.
+// Mark the first N bookings done where N = number of completed visits for that client that day.
+// This correctly handles Jane Doe 3x: 1 done = first booking done, 2 pending.
+function buildDoneSet(dayBookings, dayVisits) {
+  const clientBookings = {};
+  dayBookings.forEach(b => {
+    const k = b.client_name || '';
+    if (!clientBookings[k]) clientBookings[k] = [];
+    clientBookings[k].push(b);
+  });
+  Object.values(clientBookings).forEach(arr =>
+    arr.sort((a, z) => _timeToMins(a.scheduled_time) - _timeToMins(z.scheduled_time))
+  );
+  const clientDone = {};
+  (dayVisits || []).forEach(v => {
+    const k = v.client_name || '';
+    clientDone[k] = (clientDone[k] || 0) + 1;
+  });
+  const doneSet = new Set();
+  Object.entries(clientBookings).forEach(([name, bookings]) => {
+    const n = clientDone[name] || 0;
+    bookings.slice(0, n).forEach(b => doneSet.add(b.id));
+  });
+  return doneSet;
+}
+
+// For renderHomeFeed: consumed-visit matching so the same completed visit
+// can't be claimed by two bookings. Returns the matched visit or null.
+function matchVisitToBooking(booking, completedVisits, consumedIds) {
+  // Exact booking_id match first
+  if (booking.id) {
+    const exact = completedVisits.find(v => !consumedIds.has(v.id) && v.booking_id === booking.id);
+    if (exact) { consumedIds.add(exact.id); return exact; }
+  }
+  // Time-proximity match — closest unclaimed visit within 3h of scheduled_time
+  const bMins = _timeToMins(booking.scheduled_time);
+  const candidates = completedVisits
+    .filter(v =>
+      !consumedIds.has(v.id) &&
+      v.client_name === booking.client_name &&
+      v.visit_date === booking.scheduled_date
+    )
+    .sort((a, z) => Math.abs(_timeToMins(a.time_in) - bMins) - Math.abs(_timeToMins(z.time_in) - bMins));
+  const best = candidates[0];
+  if (best && Math.abs(_timeToMins(best.time_in) - bMins) <= 180) {
+    consumedIds.add(best.id);
+    return best;
+  }
+  return null;
+}
+// ── END BOOKING DONE UTILITIES ────────────────────────────────────────────────
+
 function renderAvailableShifts() {
   loadShiftOffers().catch(() => {});
   const section = document.getElementById('avail-shifts-section');
@@ -2280,9 +2388,9 @@ function showCheckinConfirm(clientName, latitude, longitude, within_range, btn) 
     ? `Scheduled ${booking.scheduled_time || '—'}`
     : 'No scheduled booking found for today';
 
-  // GPS warning if >500m
+  // GPS warning only when explicitly outside fence (false) — null means no coords configured, don't warn
   const gpsEl = document.getElementById('cc-gps-warning');
-  if (latitude && longitude && !within_range) {
+  if (latitude && longitude && within_range === false) {
     gpsEl.style.display = 'block';
     gpsEl.textContent = '⚠ You appear to be more than 500m from the client\'s location. Confirm only if you are at the correct address.';
   } else {
@@ -2501,6 +2609,18 @@ async function doCheckOut() {
   const obs = document.getElementById('cl-obs').value.trim();
   const supplies = document.getElementById('cl-supplies').value.trim();
   const incident = document.getElementById('co-incident').value.trim();
+  // Collect BP vitals
+  const bpSys  = document.getElementById('cl-bp-sys')?.value;
+  const bpDia  = document.getElementById('cl-bp-dia')?.value;
+  const pulse   = document.getElementById('cl-pulse')?.value;
+  const temp    = document.getElementById('cl-temp')?.value;
+  const o2Sat   = document.getElementById('cl-o2')?.value;
+  const glucose = document.getElementById('cl-glucose')?.value;
+  const vitals  = (bpSys || bpDia || pulse || temp || o2Sat || glucose) ? {
+    bp: bpSys && bpDia ? `${bpSys}/${bpDia}` : undefined,
+    pulse: pulse || undefined, temp: temp || undefined,
+    o2: o2Sat || undefined, glucose: glucose || undefined
+  } : null;
   const btn = document.getElementById('co-submit-btn');
   btn.textContent = 'Submitting...'; btn.disabled = true;
   const medsArr = Array.from(document.querySelectorAll('#co-mar-boxes input[type="checkbox"]:checked')).map(cb => cb.value).filter(Boolean);
@@ -2563,6 +2683,7 @@ async function doCheckOut() {
     observations: obsNotes,
     meds_given: medsArr.length ? medsArr : undefined,
     task_photos: taskPhotoUrls.length ? taskPhotoUrls : undefined,
+    vitals: vitals || undefined,
     voice_note_url: voiceNoteUrl || undefined
   };
 
@@ -2635,6 +2756,7 @@ function toggleCl(el) {
   el.querySelector('.cl-box').textContent = el.classList.contains('done') ? '✓' : '';
   haptic(30); // Build 3 — subtle tap on each task
   updateClCount(); saveChecklist();
+  saveChecklistState(); // persist per active visit to sessionStorage
 }
 function updateClCount() {
   const total = document.querySelectorAll('#sect-checklist .cl-item').length;
@@ -2698,8 +2820,44 @@ function restoreChecklist() {
     const sup = localStorage.getItem(_clKey('sup'));
     if (obs) document.getElementById('cl-obs').value = obs;
     if (sup) document.getElementById('cl-supplies').value = sup;
+    // Restore BP vitals
+    const bpSys = localStorage.getItem(_clKey('bp_sys')); if (bpSys) { const el = document.getElementById('cl-bp-sys'); if (el) el.value = bpSys; }
+    const bpDia = localStorage.getItem(_clKey('bp_dia')); if (bpDia) { const el = document.getElementById('cl-bp-dia'); if (el) el.value = bpDia; }
+    const pulse = localStorage.getItem(_clKey('pulse')); if (pulse) { const el = document.getElementById('cl-pulse'); if (el) el.value = pulse; }
+    const temp  = localStorage.getItem(_clKey('temp'));  if (temp)  { const el = document.getElementById('cl-temp');  if (el) el.value = temp; }
+    const o2    = localStorage.getItem(_clKey('o2'));    if (o2)    { const el = document.getElementById('cl-o2');    if (el) el.value = o2; }
+    const gluc  = localStorage.getItem(_clKey('gluc'));  if (gluc)  { const el = document.getElementById('cl-glucose');if (el) el.value = gluc; }
     updateClCount();
+    updateBPStatus();
   } catch {}
+}
+
+// Save BP vitals to localStorage
+function saveBPVitals() {
+  try {
+    const get = id => document.getElementById(id)?.value || '';
+    localStorage.setItem(_clKey('bp_sys'), get('cl-bp-sys'));
+    localStorage.setItem(_clKey('bp_dia'), get('cl-bp-dia'));
+    localStorage.setItem(_clKey('pulse'),  get('cl-pulse'));
+    localStorage.setItem(_clKey('temp'),   get('cl-temp'));
+    localStorage.setItem(_clKey('o2'),     get('cl-o2'));
+    localStorage.setItem(_clKey('gluc'),   get('cl-glucose'));
+    updateBPStatus();
+  } catch {}
+}
+
+// Show BP status label (normal/high/low)
+function updateBPStatus() {
+  const sys = parseInt(document.getElementById('cl-bp-sys')?.value||0);
+  const dia = parseInt(document.getElementById('cl-bp-dia')?.value||0);
+  const statusEl = document.getElementById('cl-bp-status');
+  if (!statusEl || !sys || !dia) return;
+  let label = '', color = 'var(--green2)';
+  if (sys >= 180 || dia >= 120) { label = '⚠ Hypertensive Crisis — notify family/HQ immediately'; color = 'var(--red)'; }
+  else if (sys >= 140 || dia >= 90) { label = '⚠ High Blood Pressure'; color = 'var(--amber)'; }
+  else if (sys < 90 || dia < 60)  { label = '⚠ Low Blood Pressure'; color = 'var(--amber)'; }
+  else { label = '✓ BP Normal'; color = 'var(--green2)'; }
+  statusEl.textContent = label; statusEl.style.color = color;
 }
 // S38 — Client-specific checklist injection
 // Reads daily_routine from care_plans (served via /psw/clients endpoint)
@@ -3282,7 +3440,18 @@ function showSect(name) {
   const bnavs = document.querySelectorAll('.bnav-item');
   if (bi >= 0 && bnavs[bi]) bnavs[bi].classList.add('active');
   if (name === 'messages') loadMessages();
-  if (name === 'schedule') { loadSchedule(); }
+  if (name === 'schedule') {
+    // Render immediately with cached data — don't wait for fetch
+    if (scheduleData) renderWeek();
+    else {
+      // Show loading state in strip while first fetch completes
+      const strip = document.getElementById('sched-strip');
+      const cards = document.getElementById('sched-day-cards');
+      if (strip) strip.innerHTML = '<div style="flex:1;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);padding:12px 0;letter-spacing:1px;">Loading...</div>';
+      if (cards) cards.innerHTML = '';
+    }
+    loadSchedule(); // refresh in background — calls renderWeek() on completion
+  }
   if (name === 'pay') loadPaySummary();
   if (name === 'home') { loadHomeData(); }
   if (name === 'live') renderLiveOps();
@@ -3600,8 +3769,9 @@ function renderLiveOps() {
   // Upcoming today
   const upcomingEl = document.getElementById('live-upcoming-list');
   const todayBookings = bookings.filter(b => b.scheduled_date === today);
+  const _liveDoneSet = buildDoneSet(todayBookings, todayVisits);
   const pendingBookings = todayBookings.filter(b => {
-    const done = todayVisits.some(v => v.client_name === b.client_name);
+    const done = _liveDoneSet.has(b.id);
     const active = activeVisit && activeVisit.client_name === b.client_name;
     return !done && !active;
   });
@@ -3801,8 +3971,9 @@ function updateTodayProgress() {
 
   // Next visit card
   const now = new Date();
+  const _homeDoneSet = buildDoneSet(todayBookings, todayDone);
   const upcoming = todayBookings.filter(b => {
-    const isDone = todayDone.some(v => v.client_name === b.client_name);
+    const isDone = _homeDoneSet.has(b.id);
     const isActive = activeVisit && activeVisit.client_name === b.client_name;
     if (isDone || isActive) return false;
     if (b.scheduled_time) {
@@ -3937,8 +4108,9 @@ function openCalPopup(dateStr) {
       });
     });
 
+    const _calDoneSet = buildDoneSet(bookings, completed);
     bookings.forEach(b => {
-      const isDone = completed.some(v => v.client_name === b.client_name);
+      const isDone = _calDoneSet.has(b.id);
       const isActive = activeVisit && activeVisit.client_name === b.client_name && dateStr === today;
       if (!isDone && !isActive) {
         rows.push({
@@ -4115,8 +4287,10 @@ function openRouteMap() {
 function headingToNextClient() {
   const today = new Date().toLocaleDateString('en-CA',{timeZone:'America/Toronto'});
   const done = (scheduleData?.completed_visits||[]).filter(v => v.visit_date === today);
-  const upcoming = (scheduleData?.bookings||[])
-    .filter(b => b.scheduled_date === today && !done.some(v => v.client_name === b.client_name) && (!activeVisit || activeVisit.client_name !== b.client_name))
+  const todayB = (scheduleData?.bookings||[]).filter(b => b.scheduled_date === today);
+  const _navDoneSet = buildDoneSet(todayB, done);
+  const upcoming = todayB
+    .filter(b => !_navDoneSet.has(b.id) && (!activeVisit || activeVisit.client_name !== b.client_name))
     .sort((a,b) => (a.scheduled_time||'').localeCompare(b.scheduled_time||''));
   if (!upcoming.length) { showToast('No upcoming visits today', 'err'); closeDrawer(); return; }
   const next = upcoming[0];
@@ -4344,9 +4518,23 @@ async function submitForm(formIdx) {
     if (savedName && savedPin) {
       pswName = savedName; pswPin = savedPin;
       fetch(`${API}/psw/notes/${encodeURIComponent(savedName)}?pin=${savedPin}&operator_id=${pswOperatorId}`)
-        .then(r => { if (r.ok) { unlockApp(); } else { sessionStorage.removeItem('psw_name'); sessionStorage.removeItem('psw_pin'); } })
-        .catch(() => { /* Railway down — stay on lock screen */ sessionStorage.removeItem('psw_name'); sessionStorage.removeItem('psw_pin'); })
-        .catch(() => { unlockApp(); }); // offline — restore anyway
+        .then(r => {
+          if (r.ok) {
+            unlockApp(); // 200 — valid session, unlock
+          } else if (r.status === 401) {
+            // Only clear on explicit auth failure — PIN wrong or PSW deactivated
+            sessionStorage.removeItem('psw_name');
+            sessionStorage.removeItem('psw_pin');
+          } else {
+            // Server error (5xx), deploy in progress, etc — keep credentials and unlock
+            // PSW shouldn't be locked out because Railway is restarting
+            unlockApp();
+          }
+        })
+        .catch(() => {
+          // Network down — restore anyway so refresh doesn't log them out
+          unlockApp();
+        });
     }
   } catch(e) {}
 })();
@@ -4451,7 +4639,9 @@ if ('serviceWorker' in navigator) {
 // ║  Browser-native — no SDK, no cost. Works on iOS Safari 16+,     ║
 // ║  Chrome Android 108+, Samsung Internet 18+.                      ║
 // ╚══════════════════════════════════════════════════════════════════╝
-const WA_RPID   = window.location.hostname;
+// WebAuthn RP ID must be a fixed domain — dynamic hostname breaks cross-session biometrics
+// Always use the base PSW portal domain regardless of URL params
+const WA_RPID   = 'psw.proximitycares.ca';
 const WA_RPNAME = (window._agencyName || 'Proximity Care') + ' PSW';
 const WA_STORE  = 'psw_wa_cred_id'; // localStorage key for credential ID
 
@@ -5047,6 +5237,96 @@ function openInGoogleMaps() {
   }
 }
 // ── END NAVIGATION MAP ───────────────────────────────────────────────────────
+
+// ── INCIDENT HISTORY COLLAPSE ─────────────────────────────────────────────
+let _incidentExpanded = true;
+function toggleIncidentHistory() {
+  _incidentExpanded = !_incidentExpanded;
+  const list = document.getElementById('psw-incident-list');
+  const toggle = document.getElementById('psw-incident-toggle');
+  if (list) list.style.display = _incidentExpanded ? '' : 'none';
+  if (toggle) toggle.textContent = _incidentExpanded ? '▲' : '▼';
+}
+
+// ── CHECKLIST PERSISTENCE — saves to sessionStorage per visit ─────────────
+// Called whenever a checklist item is toggled
+function saveChecklistState() {
+  if (!activeVisit?.id) return;
+  try {
+    const items = [];
+    document.querySelectorAll('.cl-item').forEach((el, i) => {
+      items.push(el.classList.contains('done') ? 1 : 0);
+    });
+    sessionStorage.setItem('cl_state_' + activeVisit.id, JSON.stringify(items));
+  } catch(e) {}
+}
+function restoreChecklistState() {
+  if (!activeVisit?.id) return;
+  try {
+    const saved = sessionStorage.getItem('cl_state_' + activeVisit.id);
+    if (!saved) return;
+    const items = JSON.parse(saved);
+    document.querySelectorAll('.cl-item').forEach((el, i) => {
+      if (items[i]) el.classList.add('done');
+    });
+    updateClCount();
+  } catch(e) {}
+}
+
+// ── CLIENT CARE PLAN POPUP (from home feed) ───────────────────────────────────
+function openClientCarePopup(clientName) {
+  const clients = scheduleData?.clients || scheduleData?.assigned_clients || window._pswClients || [];
+  const c = clients.find(cl => {
+    const full = ((cl.first_name||'')+' '+(cl.last_name||'')).trim();
+    return full.toLowerCase() === (clientName||'').toLowerCase() ||
+           full.toLowerCase().startsWith((clientName||'').split(' ')[0].toLowerCase()) ||
+           (cl.full_name||'').toLowerCase() === (clientName||'').toLowerCase();
+  });
+
+  const existing = document.getElementById('care-popup-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'care-popup-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;touch-action:manipulation;';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  const field = (label, val) => val ? `<div style="margin-bottom:10px;"><div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">${label}</div><div style="font-size:13px;color:var(--text);line-height:1.5;">${val}</div></div>` : '';
+
+  const name = c ? ((c.first_name||'')+' '+(c.last_name||'')).trim() || clientName : clientName;
+
+  overlay.innerHTML = `<div style="background:var(--bg2);border-radius:20px 20px 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:20px 16px 32px;">
+    <div style="width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--teal2);margin-bottom:2px;">Care Plan</div>
+        <div style="font-size:18px;font-weight:600;color:var(--text);">${name}</div>
+      </div>
+      <button onclick="document.getElementById('care-popup-overlay').remove()" style="background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:4px 8px;min-height:44px;touch-action:manipulation;">✕</button>
+    </div>
+    ${c ? `
+      ${field('Address', c.address)}
+      ${field('Care Notes', c.care_notes || c.summary)}
+      ${field('Goals', c.goals)}
+      ${field('Daily Routine', c.daily_routine)}
+      ${field('Medications', c.medications)}
+      ${field('Care Directives', c.care_directives)}
+      ${c.dnr ? `<div style="padding:10px 12px;background:rgba(224,85,85,.08);border:1px solid rgba(224,85,85,.3);border-radius:8px;margin-bottom:10px;font-family:var(--mono);font-size:12px;color:var(--red);">⚠ DNR — Do Not Resuscitate on file</div>` : ''}
+      ${field('Mobility', c.mobility_level)}
+      ${field('Cognitive Status', c.cognitive_status)}
+      ${field('Preferences', c.preferences)}
+      <div style="margin-top:4px;padding-top:12px;border-top:1px solid var(--border);">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Emergency Contacts</div>
+        ${c.emergency_contact_1_name ? `<div style="font-size:13px;color:var(--text);margin-bottom:4px;">📞 ${c.emergency_contact_1_name}${c.emergency_contact_1_phone?' · '+c.emergency_contact_1_phone:''}</div>` : ''}
+        ${c.emergency_contact_2_name ? `<div style="font-size:13px;color:var(--text);">📞 ${c.emergency_contact_2_name}${c.emergency_contact_2_phone?' · '+c.emergency_contact_2_phone:''}</div>` : ''}
+        ${c.family_contact_name ? `<div style="font-size:13px;color:var(--text);margin-top:4px;">👨‍👩‍👧 ${c.family_contact_name}${c.family_phone?' · '+c.family_phone:''}</div>` : ''}
+      </div>
+    ` : `<div style="font-family:var(--mono);font-size:13px;color:var(--muted);text-align:center;padding:20px 0;">Care plan not loaded yet.<br>Check the Clients tab for details.</div>`}
+  </div>`;
+
+  document.body.appendChild(overlay);
+}
+// ── END CLIENT CARE PLAN POPUP ────────────────────────────────────────────────
 
 function addCustomTask() {
   const input = document.getElementById('cl-custom-input');
