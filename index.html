@@ -116,7 +116,7 @@ a{color:inherit;text-decoration:none;}
 .section{display:none;padding-bottom:8px;}
 .section.active{display:block;}
 /* Messages section — flex column so thread fills space and input stays at bottom */
-#sect-messages.active{display:flex;flex-direction:column;height:calc(100dvh - 64px - env(safe-area-inset-bottom));padding:0;overflow:hidden;}
+#sect-messages.active{display:flex;flex-direction:column;height:calc(100dvh - 52px - 64px - env(safe-area-inset-bottom));padding:0;overflow:hidden;}
 .section-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;}
 .section-title{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--muted2);}
 
@@ -958,7 +958,7 @@ a{color:inherit;text-decoration:none;}
 
   <div class="section-header" style="padding-bottom:4px;">
     <span class="section-title">Today &amp; Recent</span>
-    <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="home-last-updated">—</span>
+    <span style="font-family:var(--rb-mono);font-size:11px;color:var(--rb-dim);" id="home-last-updated">—</span>
   </div>
   <div class="feed-card" id="home-feed">
     <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
@@ -1002,7 +1002,7 @@ a{color:inherit;text-decoration:none;}
   <div id="avail-shifts-section" style="display:none;">
     <div class="section-header" style="padding-top:4px;">
       <span class="section-title">Available Shifts</span>
-      <span style="font-family:var(--mono);font-size:11px;color:var(--gold);">Tap to claim</span>
+      <span style="font-family:var(--rb-mono);font-size:11px;color:var(--gold);">Tap to claim</span>
     </div>
     <div id="avail-shifts-list"></div>
   </div>
@@ -1018,7 +1018,7 @@ a{color:inherit;text-decoration:none;}
 <div class="section" id="sect-checklist">
   <div class="section-header">
     <span class="section-title">Daily Checklist</span>
-    <div id="cl-visit-name" style="font-family:var(--mono);font-size:11px;color:var(--teal2);letter-spacing:1px;"></div>
+    <div id="cl-visit-name" style="font-family:var(--rb-mono);font-size:11px;color:var(--psw);letter-spacing:1px;"></div>
   </div>
 
   <!-- VISIT FORMS — loaded on checkin, submitted during visit -->
@@ -1085,7 +1085,7 @@ a{color:inherit;text-decoration:none;}
         <label class="form-label" style="font-size:11px;">Blood Pressure (Sys/Dia)</label>
         <div style="display:flex;gap:4px;align-items:center;">
           <input type="number" id="cl-bp-sys" class="sinput" placeholder="120" min="60" max="250" style="font-size:16px;padding:10px;text-align:center;" oninput="saveBPVitals()">
-          <span style="font-family:var(--mono);color:var(--muted);font-size:14px;">/</span>
+          <span style="font-family:var(--rb-mono);color:var(--rb-dim);font-size:14px;">/</span>
           <input type="number" id="cl-bp-dia" class="sinput" placeholder="80" min="40" max="150" style="font-size:16px;padding:10px;text-align:center;" oninput="saveBPVitals()">
         </div>
       </div>
@@ -1106,7 +1106,7 @@ a{color:inherit;text-decoration:none;}
       <label class="form-label" style="font-size:11px;">Blood Sugar (mmol/L), optional</label>
       <input type="number" id="cl-glucose" class="sinput" placeholder="5.5" step="0.1" min="1" max="30" style="font-size:16px;padding:10px;" oninput="saveBPVitals()">
     </div>
-    <div id="cl-bp-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;min-height:18px;"></div>
+    <div id="cl-bp-status" style="font-family:var(--rb-mono);font-size:11px;color:var(--rb-dim);margin-bottom:4px;min-height:18px;"></div>
 
     <div class="cl-section-title">Observations &amp; Supplies</div>
     <div style="margin-bottom:10px;">
@@ -4854,7 +4854,7 @@ function updateTodayProgress() {
   if (!scheduleData) return;
   const today = new Date().toLocaleDateString('en-CA',{timeZone:'America/Toronto'});
   const todayBookings = (scheduleData.bookings||[]).filter(b => b.scheduled_date === today);
-  const todayDone = (scheduleData.completed_visits||[]).filter(v => v.visit_date === today);
+  const todayDone = (scheduleData.completed_visits||[]).filter(v => v.visit_date === today && v.time_out);
   const total = todayBookings.length;
   const done = todayDone.length;
   window._homeDone = done; window._homeTotal = total;
@@ -5328,7 +5328,7 @@ function openRouteMap() {
 // ── HEADING TO NEXT CLIENT ──
 function headingToNextClient() {
   const today = new Date().toLocaleDateString('en-CA',{timeZone:'America/Toronto'});
-  const done = (scheduleData?.completed_visits||[]).filter(v => v.visit_date === today);
+  const done = (scheduleData?.completed_visits||[]).filter(v => v.visit_date === today && v.time_out);
   const todayB = (scheduleData?.bookings||[]).filter(b => b.scheduled_date === today);
   const _navDoneSet = buildDoneSet(todayB, done);
   const upcoming = todayB
