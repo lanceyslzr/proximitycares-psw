@@ -5031,6 +5031,7 @@ function initRouteMap(){
     }
     if (empty) empty.style.display = 'none';
     if (sub) sub.textContent = stops.length + ' stop' + (stops.length !== 1 ? 's' : '') + ' today';
+    if (card.classList.contains('collapsed')) return;
     if (_routeMapInit && _homeMap) return;
 
     loadLeaflet(() => {
