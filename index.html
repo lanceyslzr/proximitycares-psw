@@ -218,14 +218,18 @@ a{color:inherit;text-decoration:none;}
 /* today's route mini map */
 .route-card{margin:0 12px 12px;border-radius:20px;overflow:hidden;border:1px solid var(--rb-line2);
   background:var(--rb-panel);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 20px 50px -30px rgba(0,0,0,.9);}
-.route-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;}
+.route-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.route-chev{display:flex;align-items:center;justify-content:center;color:var(--rb-dim);transition:transform .32s var(--e);}
+.route-chev svg{width:18px;height:18px;}
+.route-card:not(.collapsed) .route-chev{transform:rotate(180deg);}
 .route-hd-l{display:flex;align-items:center;gap:10px;}
 .route-hd-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
   background:linear-gradient(160deg,rgba(86,200,245,.16),rgba(86,200,245,.04));border:1px solid rgba(86,200,245,.28);color:var(--psw-light);}
 .route-hd-icon svg{width:16px;height:16px;}
 .route-hd-t{font-family:var(--rb-sans);font-size:14px;font-weight:600;color:var(--rb-text);letter-spacing:-.2px;}
 .route-hd-s{font-family:var(--rb-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--rb-dim);margin-top:2px;}
-.route-map{width:100%;height:200px;background:var(--rb-base);position:relative;}
+.route-map{width:100%;height:200px;background:var(--rb-base);position:relative;transition:height .32s var(--e);}
+.route-card.collapsed .route-map{height:0;}
 .route-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;}
 .route-empty svg{width:26px;height:26px;color:var(--rb-dim);opacity:.7;}
 .route-empty div{font-family:var(--rb-mono);font-size:11px;color:var(--rb-dim);letter-spacing:.5px;line-height:1.6;max-width:240px;}
@@ -877,12 +881,13 @@ a{color:inherit;text-decoration:none;}
   </div>
 
   <!-- LIVING HOME: today's route map -->
-  <div class="route-card" id="route-card" style="display:none;">
-    <div class="route-hd">
+  <div class="route-card collapsed" id="route-card" style="display:none;">
+    <div class="route-hd" onclick="toggleRouteMap()">
       <div class="route-hd-l">
         <div class="route-hd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.5 2V6L9 4m0 16 6-2m-6 2V4m6 14 5.5 2V6L15 4m0 14V4m-6 0 6 2"/></svg></div>
         <div><div class="route-hd-t">Today's Route</div><div class="route-hd-s" id="route-hd-s">Your visits today</div></div>
       </div>
+      <div class="route-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
     </div>
     <div class="route-map" id="route-map">
       <div class="route-empty" id="route-empty">
@@ -4980,6 +4985,16 @@ function renderHomeLiving(){
   } catch (e) {}
 }
 
+function toggleRouteMap(){
+  const card = document.getElementById('route-card');
+  if (!card) return;
+  card.classList.toggle('collapsed');
+  if (!card.classList.contains('collapsed')) {
+    try { initRouteMap(); } catch (e) {}
+    setTimeout(() => { try { if (_homeMap) _homeMap.invalidateSize(); } catch (e) {} }, 340);
+  }
+}
+
 function initRouteMap(){
   try {
     const card = document.getElementById('route-card');
@@ -5012,6 +5027,7 @@ function initRouteMap(){
     }
     if (empty) empty.style.display = 'none';
     if (sub) sub.textContent = stops.length + ' stop' + (stops.length !== 1 ? 's' : '') + ' today';
+    if (card.classList.contains('collapsed')) return;
     if (_routeMapInit && _homeMap) return;
 
     loadLeaflet(() => {
