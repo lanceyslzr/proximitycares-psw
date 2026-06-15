@@ -1,6 +1,6 @@
 // Proximity PSW Portal — Service Worker v12
 // Bump: Session 5 cache bust (visit forms UI)
-const CACHE = 'proximity-psw-v14';
+const CACHE = 'proximity-psw-v15';
 const STATIC = [
   '/psw-manifest.json',
   '/psw-icon-192.png',
@@ -30,6 +30,9 @@ self.addEventListener('activate', e => {
 // ── FETCH ──
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+
+  // Ignore non-http(s) schemes (chrome-extension:, data:, blob:) — Cache API can't store them
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
   // Always hit network for Railway API calls
   if (url.hostname === 'proximity-agent-production.up.railway.app') {
