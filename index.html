@@ -169,13 +169,6 @@ a{color:inherit;text-decoration:none;}
 .feed-see-more:active{background:rgba(86,200,245,.14);}
 .feed-see-more svg{width:14px;height:14px;}
 
-/* route map minimize */
-.route-min-btn{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--rb-line2);background:var(--rb-elev);color:var(--rb-dim);cursor:pointer;touch-action:manipulation;transition:all .14s var(--e);}
-.route-min-btn:active{background:var(--rb-base);}
-.route-min-btn svg{width:16px;height:16px;transition:transform .25s var(--e);}
-.route-card.min .route-map{display:none;}
-.route-card.min .route-min-btn svg{transform:rotate(180deg);}
-
 /* ACTIVE BANNER — glass */
 .active-banner{margin:12px;background:linear-gradient(165deg,rgba(255,179,64,.06),rgba(255,255,255,.012)),var(--rb-panel);border:1px solid rgba(255,179,64,.28);border-radius:16px;padding:16px;display:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 14px 34px -20px rgba(0,0,0,.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
 .active-banner.show{display:block;}
@@ -890,7 +883,6 @@ a{color:inherit;text-decoration:none;}
         <div class="route-hd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.5 2V6L9 4m0 16 6-2m-6 2V4m6 14 5.5 2V6L15 4m0 14V4m-6 0 6 2"/></svg></div>
         <div><div class="route-hd-t">Today's Route</div><div class="route-hd-s" id="route-hd-s">Your visits today</div></div>
       </div>
-      <button class="route-min-btn" onclick="toggleRouteMap()" aria-label="Minimize map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
     </div>
     <div class="route-map" id="route-map">
       <div class="route-empty" id="route-empty">
@@ -2047,6 +2039,8 @@ function unlockApp() {
   hydrateFromCache(); // Pass 1: paint last-known data INSTANTLY, before network returns
   fetchPSWEmail();
   loadAll();
+  // Route map fix: invalidate once home is visible and the map is built (prevents blank map after unlock)
+  (function fixHomeMap(n){ try { if (_homeMap) { _homeMap.invalidateSize(); return; } } catch(e){} if ((n||0) < 10) setTimeout(() => fixHomeMap((n||0)+1), 300); })(0);
   restoreChecklist(); // initial restore with global key (best-effort before visit loads)
   setTimeout(restoreChecklistState, 2000); // restore after loadSchedule brings back active visit
   // Deferred restore: once active visit is known, re-run with the correct visit-keyed localStorage
@@ -2413,13 +2407,6 @@ function renderHomeFeed() {
 }
 // ── ALAYACARE-STYLE SCHEDULE STRIP ───────────────────────────────────────────
 function toggleHomeFeedExpand(){ window._homeFeedExpanded = !window._homeFeedExpanded; renderHomeFeed(); }
-function toggleRouteMap(){
-  const c = document.getElementById('route-card');
-  if (!c) return;
-  c.classList.toggle('min');
-  if (!c.classList.contains('min') && _homeMap) setTimeout(() => { try { _homeMap.invalidateSize(); } catch (e) {} }, 160);
-}
-
 let _selectedSchedDay = null; // YYYY-MM-DD
 
 function renderWeek() {
