@@ -3554,6 +3554,7 @@ async function doCheckOut() {
   if (photoFiles && photoFiles.length && navigator.onLine) {
     for (const file of Array.from(photoFiles).slice(0, 4)) {
       try {
+        console.log('photo', file.name, file.type, file.size, 'bytes'); // TEMP diagnostic for AE upload test, revert after
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
         const path = `${(pswName||'psw').replace(/\s+/g,'_').toLowerCase()}/${activeVisit.id}_${Date.now()}.${ext}`;
         const uploadRes = await fetch(`${API}/psw/upload-photo`, {
