@@ -1,13 +1,30 @@
-// Proximity PSW Portal — Service Worker v12
-// Bump: Session 5 cache bust (visit forms UI)
+// Proximity PSW Portal, Service Worker
+//
+// B21. THE TWO DOMAINS WERE OUT OF STEP.
+//
+// This file exists TWICE, once per repo, and the copies had drifted:
+//   the psw-domain header said "v12" while its CACHE was proximity-psw-v15
+//   the offline fallback read caches.match('/index.html') on one domain and
+//     caches.match(e.request) on the other
+// Neither copy precaches any HTML, so BOTH fallbacks were dead code and the
+// difference was latent rather than live. Fixed anyway, because a latent
+// difference between two copies of one file is how the next real one hides.
+//
+// THE VERSION COMMENT NOW MATCHES THE CACHE, and that is the point of it. A
+// header claiming v12 above a v15 cache is worse than no header: it is a
+// statement that is confidently wrong.
+//
+// This copy serves proximitycares-psw, where the portal is /index.html.
+//
+// HTML IS NEVER CACHED, deliberately. Portal deploys must be instant, and a
+// cached psw-portal.html is exactly what served a stale build to HQ.
 const CACHE = 'proximity-psw-v15';
 const STATIC = [
   '/psw-manifest.json',
   '/psw-icon-192.png',
   'https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap'
 ];
-// NOTE: index.html intentionally excluded from STATIC cache
-// It is always fetched fresh so PSW portal updates deploy immediately
+// NOTE: no HTML in STATIC. The portal is always fetched fresh.
 
 // ── INSTALL ──
 self.addEventListener('install', e => {
@@ -46,19 +63,17 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // index.html — ALWAYS network first, never serve stale
-  // This ensures PSW portal updates are instant on next load
-  if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname === '/index.html') {
+  // HTML — ALWAYS network first, never serve stale.
+  if (url.pathname.endsWith('.html') || url.pathname === '/') {
     e.respondWith(
       fetch(e.request, { cache: 'no-store' })
-        .then(res => {
-          // Do NOT cache index.html — return fresh every time
-          return res;
-        })
-        .catch(() => {
-          // Offline — serve cached version as fallback only
-          return caches.match('/index.html');
-        })
+        .then(res => res)
+        // Offline. Nothing HTML is ever cached, so this finds nothing today and
+        // is here for the shape rather than the effect. e.request, not a
+        // hardcoded '/index.html': the portal is index.html on one domain and
+        // psw-portal.html on the other, and a fallback that returns the WRONG
+        // page offline is worse than one that returns none.
+        .catch(() => caches.match(e.request))
     );
     return;
   }
@@ -79,7 +94,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(cache => cache.put(e.request, clone));
         }
         return res;
-      }).catch(() => caches.match('/index.html'));
+      }).catch(() => caches.match(e.request));
     })
   );
 });
